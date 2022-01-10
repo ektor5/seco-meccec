@@ -35,29 +35,29 @@ struct seco_meccec_data {
 	struct platform_device *pdev;
 	struct cec_adapter *cec_adap[MECCEC_MAX_CEC_ADAP];
 	struct cec_notifier *notifier[MECCEC_MAX_CEC_ADAP];
-	uint8_t channels;	/* bitmask */
+	u8 channels;	/* bitmask */
 	int irq;
 };
 
 /*
  *
- *static uint8_t hwio_config_op( 
- *                uint8_t reg, 
- *                uint8_t operation, 
- *                uint8_t val, 
- *                uint8_t* result )
+ *static uint8_t hwio_config_op(
+ *                uint8_t reg,
+ *                uint8_t operation,
+ *                uint8_t val,
+ *                uint8_t* result)
  *{
  *        /// Unlock the configuration
  *        outb(EC_CONFIG_UNLOCK, EC_CONFIG_INDEX);
  *        /// Set the register index
  *        outb(reg, EC_CONFIG_INDEX);
  *
- *        if (operation == READ){
+ *        if (operation == READ) {
  *                /// Read the register value
  *                *result = inb(EC_CONFIG_DATA);
  *
  *        }
- *        if (operation == WRITE){
+ *        if (operation == WRITE) {
  *                /// Write the register value
  *                outb(val, EC_CONFIG_DATA);
  *        }
@@ -73,43 +73,39 @@ struct seco_meccec_data {
  *
  */
 
-static int ec_reg_byte_op(
-		uint8_t reg, uint8_t operation,
+static int ec_reg_byte_op(uint8_t reg, uint8_t operation,
 		uint8_t data, uint8_t *result)
 {
 	// Check still active
-	if( !( inb( MBX_RESOURCE_REGISTER ) & AGENT_ACTIVE(AGENT_USER) ) )
+	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
 		return -EBUSY;
 
 	// Set the register index
 	outb(reg, EC_REGISTER_INDEX);
 
 	// Check still active
-	if( !( inb( MBX_RESOURCE_REGISTER ) & AGENT_ACTIVE(AGENT_USER) ) )
+	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
 		return -EBUSY;
 
-	if (operation == READ) 
-	{
+	if (operation == READ) {
 		if (result == NULL)
 			return -EINVAL;
 
 		// Read the data value
-		*result = inb( EC_REGISTER_DATA );
-	}
-	else if (operation == WRITE)
-	{
+		*result = inb(EC_REGISTER_DATA);
+	} else if (operation == WRITE) {
 		// Write the data value
 		outb(data, EC_REGISTER_DATA);
 	}
 
 	// Check still active
-	if( !( inb( MBX_RESOURCE_REGISTER ) & AGENT_ACTIVE(AGENT_USER) ) )
+	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
 		return -EBUSY;
 
 	return 0;
 }
 
-#define ec_reg_byte_rd(reg, res) ec_reg_byte_op(reg, READ , 0, res)
+#define ec_reg_byte_rd(reg, res) ec_reg_byte_op(reg, READ, 0, res)
 #define ec_reg_byte_wr(reg, val) ec_reg_byte_op(reg, WRITE, val, NULL)
 
 /// @brief  E.C. status wait
@@ -118,18 +114,18 @@ static int ec_reg_byte_op(
 /// @param  cmd  command to trigger status change if needed (0 if none)
 /// @return EFI_TIMEOUT if not status in EC_CMD_TIMEOUT attempts
 ///         EAPI_STATUS_SUCCESS if successful
-static int ec_waitstatus( uint8_t status, uint8_t cmd)
+static int ec_waitstatus(uint8_t status, uint8_t cmd)
 {
 	int idx;
 
 	// Loop until time-out or Status
-	for( idx=0; idx<EC_CMD_TIMEOUT; idx++ ){
+	for (idx = 0; idx < EC_CMD_TIMEOUT; idx++) {
 		// If status, done
-		if( ( inb( MBX_RESOURCE_REGISTER ) & AGENT_MASK(AGENT_USER) ) == status )
+		if ((inb(MBX_RESOURCE_REGISTER) & AGENT_MASK(AGENT_USER)) == status)
 			return 0;
 
 		/// Send command if needed
-		if( cmd )
+		if (cmd)
 			outb_p(cmd, MBX_RESOURCE_REGISTER);
 	}
 
@@ -189,8 +185,8 @@ static int ec_send_command(
 		void  *rx_buf,
 		uint8_t rx_size,
 		void  *tx_buf,
-		uint8_t tx_size
-		){
+		uint8_t tx_size)
+{
 
 	struct seco_meccec_data *meccec = platform_get_drvdata(pdev);
 	const struct device *dev = meccec->dev;
@@ -203,88 +199,88 @@ static int ec_send_command(
 	mutex_lock(&ec_mutex);
 
 	// Wait for BIOS agent idle (should be already if all works)
-	status = ec_waitstatus( AGENT_IDLE(AGENT_USER), 0 );
-	if( status ){
-		dev_err(dev,"Mailbox agent not available");
+	status = ec_waitstatus(AGENT_IDLE(AGENT_USER), 0);
+	if (status) {
+		dev_err(dev, "Mailbox agent not available");
 		goto err;
 	}
 
 	// BIOS agent is idle: we can request access
-	status = ec_waitstatus( AGENT_ACTIVE(AGENT_USER),
-			REQUEST_MBX_ACCESS(AGENT_USER) );
-	if( status ){
-		dev_err(dev,"Request mailbox agent failed");
+	status = ec_waitstatus(AGENT_ACTIVE(AGENT_USER),
+			REQUEST_MBX_ACCESS(AGENT_USER));
+	if (status) {
+		dev_err(dev, "Request mailbox agent failed");
 		goto err;
 	}
 
 	// We now prepare MBX data if we can
-	for( buf = (uint8_t *)rx_buf, idx = 0; ( !status ) && idx < rx_size; idx++ ){
-		status = ec_reg_byte_wr( EC_MBX_REGISTER + idx, buf[idx] );
-	}
-	if( status ){
-		dev_err(dev,"Mailbox buffer write failed");
+	for (buf = (uint8_t *)rx_buf, idx = 0; (!status) && idx < rx_size; idx++)
+		status = ec_reg_byte_wr(EC_MBX_REGISTER + idx, buf[idx]);
+
+	if (status) {
+		dev_err(dev, "Mailbox buffer write failed");
 		goto err;
 	}
 
 	// Send command
-	status = ec_reg_byte_wr( EC_COMMAND_REGISTER, cmd );
-	if( status ){
-		dev_err(dev,"Command write failed");
+	status = ec_reg_byte_wr(EC_COMMAND_REGISTER, cmd);
+	if (status) {
+		dev_err(dev, "Command write failed");
 		goto err;
 	}
 
 	// Wait for completion
-	status = ec_waitstatus( AGENT_DONE(AGENT_USER), 0 );
-	if( status ){
-		dev_err(dev,"Mailbox did not complete after command write");
+	status = ec_waitstatus(AGENT_DONE(AGENT_USER), 0);
+	if (status) {
+		dev_err(dev, "Mailbox did not complete after command write");
 		goto err;
 	}
 
 	// Get result code
-	status = ec_reg_byte_rd( EC_RESULT_REGISTER, &res );
-	if( status ){
-		dev_err(dev,"Result read failed");
+	status = ec_reg_byte_rd(EC_RESULT_REGISTER, &res);
+	if (status) {
+		dev_err(dev, "Result read failed");
 		goto err;
 	}
 
 	// Get result code and translate it
-	switch( res ){
-		case EC_NO_ERROR:
-			status = 0;
-			break;
+	switch (res) {
+	case EC_NO_ERROR:
+		status = 0;
+		break;
 
-		case EC_UNKNOWN_COMMAND_ERROR:
-			status = -ENOSYS;
-			break;
+	case EC_UNKNOWN_COMMAND_ERROR:
+		status = -EPERM;
+		break;
 
-		case EC_INVALID_ARGUMENT_ERROR:
-			status = -EINVAL;
-			break;
+	case EC_INVALID_ARGUMENT_ERROR:
+		status = -EINVAL;
+		break;
 
-		case EC_TIMEOUT_ERROR:
-			status = -EAGAIN;
-			break;
+	case EC_TIMEOUT_ERROR:
+		status = -EAGAIN;
+		break;
 
-		default:
-			status = -EIO;
-			break;
+	default:
+		status = -EIO;
+		break;
 	}
-	if( status ){
-		dev_err(dev,"Command failed");
+	if (status) {
+		dev_err(dev, "Command failed");
 		goto err;
 	}
 
 	// We now have to read return data if we can
-	for ( buf = (uint8_t *)tx_buf, idx = 0; !status && idx < tx_size; idx++ ){
-		status = ec_reg_byte_rd( EC_MBX_REGISTER + idx, &buf[idx] );
-	}
-	if( status ){
-		dev_err(dev,"Mailbox read failed");
+	for (buf = (uint8_t *)tx_buf, idx = 0; !status && idx < tx_size; idx++)
+		status = ec_reg_byte_rd(EC_MBX_REGISTER + idx, &buf[idx]);
+
+	if (status) {
+		dev_err(dev, "Mailbox read failed");
 		goto err;
 	}
 
 	// Release access, ignoring eventual time-out
-	ec_waitstatus( AGENT_IDLE(AGENT_USER), RELEASE_MBX_ACCESS(AGENT_USER) );
+	ec_waitstatus(AGENT_IDLE(AGENT_USER), RELEASE_MBX_ACCESS(AGENT_USER));
 
 err:
 	mutex_unlock(&ec_mutex);
@@ -299,7 +295,7 @@ static int find_adap_idx(struct cec_adapter *adap)
 	if (!adap)
 		return -EINVAL;
 
-	for (idx = 0; idx<MECCEC_MAX_CEC_ADAP; idx++){
+	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (cec->cec_adap[idx] == adap)
 			return idx;
 	}
@@ -314,32 +310,33 @@ static int ec_get_version(struct seco_meccec_data *cec)
 	GET_FIRMWARE_VERSION_STRUCT Version;
 	int status;
 
-	status = ec_send_command(pdev, GET_FIRMWARE_VERSION_CMD, NULL, 0, 
-			&Version, sizeof(GET_FIRMWARE_VERSION_STRUCT));
+	status = ec_send_command(pdev, GET_FIRMWARE_VERSION_CMD, NULL, 0,
+				 &Version, sizeof(GET_FIRMWARE_VERSION_STRUCT));
+
 	if (status)
 		return status;
 
-	dev_dbg(dev, "Firmware version %X.%02X / %X.%02X\n", 
-			Version.VERSION.firmwareMajorVersion,
-			Version.VERSION.firmwareMinorVersion,
-			Version.VERSION.libraryMajorVersion,
-			Version.VERSION.libraryMinorVersion);
+	dev_dbg(dev, "Firmware version %X.%02X / %X.%02X\n",
+		Version.VERSION.firmwareMajorVersion,
+		Version.VERSION.firmwareMinorVersion,
+		Version.VERSION.libraryMajorVersion,
+		Version.VERSION.libraryMinorVersion);
 
 	return 0;
 }
 
-static int ec_cec_status(struct seco_meccec_data *cec, 
-		struct seco_meccec_status_t * result) 
+static int ec_cec_status(struct seco_meccec_data *cec,
+			 struct seco_meccec_status_t *result)
 {
 	const struct device *dev = cec->dev;
 	const struct platform_device *pdev = cec->pdev;
 	struct seco_meccec_status_t buf = { 0 };
 	int ret;
 
-	ret = ec_send_command(pdev, GET_CEC_STATUS_CMD, 
-			//	NULL, 0, 
-			&buf, sizeof(struct seco_meccec_status_t),
-			&buf, sizeof(struct seco_meccec_status_t));
+	ret = ec_send_command(pdev, GET_CEC_STATUS_CMD,
+			//	NULL, 0,
+			      &buf, sizeof(struct seco_meccec_status_t),
+			      &buf, sizeof(struct seco_meccec_status_t));
 	if (ret)
 		return ret;
 
@@ -369,7 +366,7 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	buf.bus = find_adap_idx(adap);
 	buf.addr = logical_addr & 0x0f;
 
-	status = ec_send_command(pdev, SET_CEC_LOGADDR_CMD, 
+	status = ec_send_command(pdev, SET_CEC_LOGADDR_CMD,
 			&buf, sizeof(struct seco_meccec_logaddr_t),
 			NULL, 0);
 
@@ -389,23 +386,28 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 	if (ret)
 		dev_err(dev, "enable: status operation failed (%d)", ret);
 
-	if (enable){
+	if (enable)
 		dev_dbg(dev, "Device enabled");
-	} else {
+	else
 		dev_dbg(dev, "Device disabled");
-	}
-	
+
 	return 0;
 }
 
 static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
-				 u32 signal_free_time, struct cec_msg *msg)
+				u32 signal_free_time, struct cec_msg *msg)
 {
 	struct seco_meccec_data *cec = cec_get_drvdata(adap);
 	struct platform_device *pdev = cec->pdev;
 	const struct device *dev = cec->dev;
 	struct seco_meccec_tx_t buf = { };
 	int status, idx, i;
+	int ret;
+
+	/* reset status register */
+	ret = ec_cec_status(cec, NULL);
+	if (ret)
+		dev_err(dev, "enable: status operation failed (%d)", ret);
 
 	dev_dbg(dev, "Device transmitting");
 
@@ -414,24 +416,34 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 		return idx;
 
 	buf.bus = idx;
+	buf.send = (msg->msg[0] & 0xf0) >> 4;
 	buf.dest = msg->msg[0] & 0x0f;
 	buf.size = msg->len - 1;
 	memcpy(buf.data, msg->msg + 1, buf.size);
 
 	dev_dbg(dev, "tx_buf:");
-	dev_dbg(dev, "size: %d", buf.size);
-	for (i = 0; i < MECCEC_MAX_MSG_SIZE; i++){
+	dev_dbg(dev, "send: 0x%0x", buf.send);
+	dev_dbg(dev, "dest: 0x%0x", buf.dest);
+	for (i = 0; i < buf.size; i++) {
 		dev_dbg(dev, "%02d: %02x", i, buf.data[i]);
 	}
+	dev_dbg(dev, "size: %d", buf.size);
+
 	dev_dbg(dev, "tx_msg:");
 	dev_dbg(dev, "size: %d", msg->len);
-	for (i = 0; i < MECCEC_MAX_MSG_SIZE; i++){
+	for (i = 0; i < msg->len; i++) {
 		dev_dbg(dev, "%02d: %02x", i, msg->msg[i]);
 	}
 
-	status = ec_send_command(pdev, CEC_WRITE_CMD, 
-			&buf, sizeof(struct seco_meccec_tx_t),
-			NULL, 0);
+	status = ec_send_command(pdev, CEC_WRITE_CMD,
+				 &buf, sizeof(struct seco_meccec_tx_t),
+				 NULL, 0);
+
+	/* reset status register */
+	ret = ec_cec_status(cec, NULL);
+	if (ret)
+		dev_err(dev, "enable: status operation failed (%d)", ret);
+
 	return status;
 }
 
@@ -472,7 +484,7 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 		goto rxerr;
 	}
 	/* Read message buffer */
-	status = ec_send_command(pdev, CEC_READ_CMD, 
+	status = ec_send_command(pdev, CEC_READ_CMD,
 			&buf, sizeof(struct seco_meccec_rx_t),
 			&buf, sizeof(struct seco_meccec_rx_t));
 	if (status)
@@ -480,46 +492,56 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 
 	/* Device msg len already accounts for the header */
 	msg.len = min(buf.size + 1, CEC_MAX_MSG_SIZE);
-	
+
 	/* Read logical address */
-	msg.msg[0]  = buf.send & 0x0f;
-	msg.msg[0] |= (buf.dest & 0x0f) << 4;
+	msg.msg[0]  = buf.dest & 0x0f;
+	msg.msg[0] |= (buf.send & 0x0f) << 4;
 
 	memcpy(msg.msg + 1, buf.data, buf.size);
 
+	dev_dbg(dev, "rx_buf_raw:");
+
+	u8 *fub = (u8*)&buf;
+
+	for (i = 0; i < sizeof(struct seco_meccec_rx_t); i++)
+	         dev_dbg(dev, "%02d: %02x", i, *(fub + i));
+
 	dev_dbg(dev, "rx_buf:");
-	dev_dbg(dev, "size: %d", buf.size);
-	for (i = 0; i < MECCEC_MAX_MSG_SIZE; i++){
+	dev_dbg(dev, "bus: %d", buf.bus);
+	dev_dbg(dev, "send: 0x%0x", buf.send);
+	dev_dbg(dev, "dest: 0x%0x", buf.dest);
+	for (i = 0; i < buf.bus; i++) {
 		dev_dbg(dev, "%02d: %02x", i, buf.data[i]);
 	}
+	dev_dbg(dev, "size: %d", buf.size);
+
 	dev_dbg(dev, "rx_msg:");
 	dev_dbg(dev, "size: %d", msg.len);
-	for (i = 0; i < MECCEC_MAX_MSG_SIZE; i++){
+	for (i = 0; i < msg.len; i++) {
 		dev_dbg(dev, "%02d: %02x", i, msg.msg[i]);
 	}
 
 	cec_received_msg(adap, &msg);
-	dev_dbg(dev, "Message received succesfully");
+	dev_dbg(dev, "Message received successfully");
 
 rxerr:
 	return;
 }
 
-static int get_status_ch (struct seco_meccec_status_t *s,
-		int ch)
+static int get_status_ch(struct seco_meccec_status_t *s,
+			 int ch)
 {
 	if (!s)
 		return -1;
 
-	switch (ch){
-		case 0: return s->status_ch0;
-		case 1: return s->status_ch1;
-		case 2: return s->status_ch2;
-		case 3: return s->status_ch3;
-		default: return -1;
+	switch (ch) {
+	case 0: return s->status_ch0;
+	case 1: return s->status_ch1;
+	case 2: return s->status_ch2;
+	case 3: return s->status_ch3;
+	default: return -1;
 	}
 }
-
 
 static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 {
@@ -533,25 +555,25 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 
 	ret = ec_cec_status(cec, &status);
 	if (ret)
-		dev_err_once(dev, "IRQ: status operation failed (%d)",
-				ret);
+		dev_err_once(dev, "IRQ: status operation failed (%d)", ret);
 
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (cec->channels & BIT_MASK(idx)) {
 			int cec_val = get_status_ch(&status, idx);
 
-			if (cec_val<0)
+			if (cec_val < 0)
 				continue;
 
 			if (cec_val & SECOCEC_STATUS_MSG_RECEIVED_MASK)
 				meccec_rx_done(cec, idx, cec_val);
 			if (cec_val & SECOCEC_STATUS_MSG_SENT_MASK)
 				meccec_tx_done(cec, idx, cec_val);
+
+			/* TODO: improve this or remove, it should take care of other channels */
 			if ((~cec_val & SECOCEC_STATUS_MSG_SENT_MASK) &&
 					(~cec_val & SECOCEC_STATUS_MSG_RECEIVED_MASK))
 				dev_warn_once(dev,
-						"Message not received or sent, but interrupt fired");
-
+					      "Message not received or sent, but interrupt fired");
 		}
 	}
 
@@ -566,7 +588,7 @@ struct cec_dmi_match {
 };
 
 static const struct cec_dmi_match secocec_dmi_match_table[] = {
-	/* UDOO X86 */
+	/* UDOO BOLT */
 	{ "SECO", "UDOO BOLT", "0000:00:02.0", {"Port B"} },
 	/* SECO SBC-D61 */
 	{ "Seco", "0D61", "0000:00:02.0", {"Port B", "Port C", "Port D", "Port E"} },
@@ -695,30 +717,28 @@ static int seco_meccec_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	/* for ( each enabled cec ) 
-	 *	do probe*/
+	/* for (each enabled cec)
+	 *	do probe
+	 */
 
 	hdmi_dev = seco_meccec_find_hdmi_dev(&pdev->dev, &conn);
-	if (IS_ERR(hdmi_dev))
-	{
+	if (IS_ERR(hdmi_dev)) {
 		dev_err(dev, "Cannot find HDMI Device");
 		return PTR_ERR(hdmi_dev);
 	}
 	dev_dbg(dev, "HDMI device found");
 
-	
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (meccec->channels & BIT_MASK(idx)) {
-
-			struct cec_adapter* acec;
+			struct cec_adapter *acec;
 
 			/* Allocate CEC adapter */
 			acec = cec_allocate_adapter(&meccec_cec_adap_ops,
-								 meccec,
-								 dev_name(dev),
-								 CEC_CAP_DEFAULTS |
-								 CEC_CAP_CONNECTOR_INFO,
-								 MECCEC_MAX_ADDRS);
+						    meccec,
+						    dev_name(dev),
+						    CEC_CAP_DEFAULTS |
+						    CEC_CAP_CONNECTOR_INFO,
+						    MECCEC_MAX_ADDRS);
 
 			if (IS_ERR(acec)) {
 				ret = PTR_ERR(acec);
@@ -779,7 +799,7 @@ err_notifier:
 			if (adaps--)
 				return ret;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
 			cec_notifier_cec_adap_unregister(meccec->notifier[idx],
 					meccec->cec_adap[idx]);
 #else
@@ -809,7 +829,7 @@ static int seco_meccec_remove(struct platform_device *pdev)
 
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (meccec->channels && BIT_MASK(idx)) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
 			cec_notifier_cec_adap_unregister(meccec->notifier[idx],
 					meccec->cec_adap[idx]);
 #else
