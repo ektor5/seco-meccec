@@ -223,30 +223,31 @@ typedef struct{
 #define MECCEC_MAX_MSG_SIZE 16
 
 struct seco_meccec_tx_t{
-	uint8_t bus;
-	int dest;
-	unsigned char data[MECCEC_MAX_MSG_SIZE];
-	int size;	
+	u8 bus;
+	u8 send;
+	u8 dest;
+	u8 data[MECCEC_MAX_MSG_SIZE];
+	u8 size;	
 };
 
 struct seco_meccec_rx_t{
-	uint8_t bus;
-	int send;
-	int dest;
-	unsigned char data[MECCEC_MAX_MSG_SIZE];
-	int size;	
+	u8 bus;
+	u8 send;
+	u8 dest;
+	u8 data[MECCEC_MAX_MSG_SIZE];
+	u8 size;	
 };
 
 struct seco_meccec_logaddr_t{
-	int bus;
-	int addr;	
+	u8 bus;
+	u8 addr;	
 };
 
 struct seco_meccec_status_t{
-	uint8_t status_ch0;
-	uint8_t status_ch1;
-	uint8_t status_ch2;
-	uint8_t status_ch3;
+	u8 status_ch0;
+	u8 status_ch1;
+	u8 status_ch2;
+	u8 status_ch3;
 };
 
 /*
@@ -268,7 +269,7 @@ struct seco_meccec_status_t{
  * @details The bitmap refers to the data byte of the ACPI-ECI EC0 device, plus
  *          bit 0 for init/deinit. All the agents will have an QUEUED and an
  *          ACTIVE bit to register the activity; this allows at most 4 distinct
- *          agents: see the macros following this enum definition. 
+ *          agents: see the macros following this enum definition.
  */
 typedef enum{
 	MBX_OFF     = 0,          /*!< Disable MBX Interface */
