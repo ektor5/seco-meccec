@@ -102,6 +102,10 @@ struct seco_meccec_logaddr_t {
 	u8 addr;
 };
 
+struct seco_meccec_phyaddr_t {
+	u8 bus;
+	u16 addr;
+};
 
 struct seco_meccec_status_t {
 	u8 status_ch0;
@@ -237,6 +241,7 @@ enum MBX_CMDS {
 	CEC_READ_CMD		 = 0x73, /*!< Read CEC command                       */
 	GET_CEC_STATUS_CMD	 = 0x74, /*!< Get CEC status regisers                */
 	SET_CEC_LOGADDR_CMD	 = 0x75, /*!< Set CEC Logical Address                */
+	SET_CEC_PHYADDR_CMD	 = 0x75, /*!< Set CEC Logical Address                */
 };
 
 #define REQUEST_MBX_ACCESS(x) (REQUEST_MBX_ACCESS_CMD + x)

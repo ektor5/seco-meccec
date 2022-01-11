@@ -366,6 +366,23 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	return status;
 }
 
+static int meccec_adap_phys_addr(struct cec_adapter *adap)
+{
+	struct seco_meccec_data *cec = cec_get_drvdata(adap);
+	struct platform_device *pdev = cec->pdev;
+	struct seco_meccec_phyaddr_t buf = { };
+	int status;
+
+	buf.bus = find_adap_idx(adap);
+	buf.addr = cpu_to_be32(adap->phys_addr);
+
+	status = ec_send_command(pdev, SET_CEC_PHYADDR_CMD,
+				 &buf, sizeof(struct seco_meccec_phyaddr_t),
+				 NULL, 0);
+
+	return status;
+}
+
 static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 {
 	struct seco_meccec_data *cec = cec_get_drvdata(adap);
@@ -381,6 +398,12 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 		dev_dbg(dev, "Device enabled");
 	else
 		dev_dbg(dev, "Device disabled");
+
+	ret = meccec_adap_phys_addr(adap);
+	if (ret) {
+		dev_err(dev, "enable: set physical address failed (%d)", ret);
+		return ret;
+	}
 
 	return 0;
 }
