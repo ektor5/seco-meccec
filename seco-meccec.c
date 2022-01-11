@@ -73,8 +73,7 @@ struct seco_meccec_data {
  *
  */
 
-static int ec_reg_byte_op(uint8_t reg, uint8_t operation,
-		uint8_t data, uint8_t *result)
+static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 {
 	// Check still active
 	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
@@ -88,7 +87,7 @@ static int ec_reg_byte_op(uint8_t reg, uint8_t operation,
 		return -EBUSY;
 
 	if (operation == READ) {
-		if (result == NULL)
+		if (!result)
 			return -EINVAL;
 
 		// Read the data value
@@ -114,7 +113,7 @@ static int ec_reg_byte_op(uint8_t reg, uint8_t operation,
 /// @param  cmd  command to trigger status change if needed (0 if none)
 /// @return EFI_TIMEOUT if not status in EC_CMD_TIMEOUT attempts
 ///         EAPI_STATUS_SUCCESS if successful
-static int ec_waitstatus(uint8_t status, uint8_t cmd)
+static int ec_waitstatus(u8 status, u8 cmd)
 {
 	int idx;
 
@@ -179,22 +178,17 @@ static int ec_waitstatus(uint8_t status, uint8_t cmd)
 ///          EFI_INVALID_PARAMETER if EC_INVALID_ARGUMENT_ERROR
 ///          EFI_DEVICE_ERROR      if unknown error
 ///          EAPI_STATUS_SUCCESS           if successful
-static int ec_send_command(
-		const struct platform_device *pdev,
-		uint8_t cmd,
-		void  *rx_buf,
-		uint8_t rx_size,
-		void  *tx_buf,
-		uint8_t tx_size)
+static int ec_send_command(const struct platform_device *pdev, u8 cmd,
+			   void *rx_buf, u8 rx_size,
+			   void *tx_buf, u8 tx_size)
 {
-
 	struct seco_meccec_data *meccec = platform_get_drvdata(pdev);
 	const struct device *dev = meccec->dev;
 
 	int status;
-	uint8_t *buf;
-	uint8_t idx;
-	uint8_t res;
+	u8 *buf;
+	u8 idx;
+	u8 res;
 
 	mutex_lock(&ec_mutex);
 
@@ -207,7 +201,7 @@ static int ec_send_command(
 
 	// BIOS agent is idle: we can request access
 	status = ec_waitstatus(AGENT_ACTIVE(AGENT_USER),
-			REQUEST_MBX_ACCESS(AGENT_USER));
+			       REQUEST_MBX_ACCESS(AGENT_USER));
 	if (status) {
 		dev_err(dev, "Request mailbox agent failed");
 		goto err;
@@ -302,25 +296,25 @@ static int find_adap_idx(struct cec_adapter *adap)
 	return -ENODEV;
 }
 
-/* TODO: remove or refactor */
 static int ec_get_version(struct seco_meccec_data *cec)
 {
 	const struct device *dev = cec->dev;
 	const struct platform_device *pdev = cec->pdev;
-	GET_FIRMWARE_VERSION_STRUCT Version;
+	struct version_msg_t version;
 	int status;
 
-	status = ec_send_command(pdev, GET_FIRMWARE_VERSION_CMD, NULL, 0,
-				 &Version, sizeof(GET_FIRMWARE_VERSION_STRUCT));
+	status = ec_send_command(pdev, GET_FIRMWARE_VERSION_CMD,
+				 NULL, 0,
+				 &version, sizeof(struct version_msg_t));
 
 	if (status)
 		return status;
 
-	dev_dbg(dev, "Firmware version %X.%02X / %X.%02X\n",
-		Version.VERSION.firmwareMajorVersion,
-		Version.VERSION.firmwareMinorVersion,
-		Version.VERSION.libraryMajorVersion,
-		Version.VERSION.libraryMinorVersion);
+	dev_dbg(dev, "Firmware version %X.%02X / %X.%02X",
+		version.fw.major,
+		version.fw.minor,
+		version.lib.major,
+		version.lib.minor);
 
 	return 0;
 }
@@ -334,17 +328,17 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 	int ret;
 
 	ret = ec_send_command(pdev, GET_CEC_STATUS_CMD,
-			//	NULL, 0,
+			      //NULL, 0,
 			      &buf, sizeof(struct seco_meccec_status_t),
 			      &buf, sizeof(struct seco_meccec_status_t));
 	if (ret)
 		return ret;
 
 	dev_dbg(dev, "CEC Status:");
-	dev_dbg(dev, "ch0: %x", buf.status_ch0);
-	dev_dbg(dev, "ch1: %x", buf.status_ch1);
-	dev_dbg(dev, "ch2: %x", buf.status_ch2);
-	dev_dbg(dev, "ch3: %x", buf.status_ch3);
+	dev_dbg(dev, "ch0: 0x%02x", buf.status_ch0);
+	dev_dbg(dev, "ch1: 0x%02x", buf.status_ch1);
+	dev_dbg(dev, "ch2: 0x%02x", buf.status_ch2);
+	dev_dbg(dev, "ch3: 0x%02x", buf.status_ch3);
 
 	if (result)
 		*result = buf;
@@ -360,15 +354,12 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	struct seco_meccec_logaddr_t buf = { };
 	int status;
 
-	//TODO: remove
-	logical_addr = 0x04;
-
 	buf.bus = find_adap_idx(adap);
 	buf.addr = logical_addr & 0x0f;
 
 	status = ec_send_command(pdev, SET_CEC_LOGADDR_CMD,
-			&buf, sizeof(struct seco_meccec_logaddr_t),
-			NULL, 0);
+				 &buf, sizeof(struct seco_meccec_logaddr_t),
+				 NULL, 0);
 
 	dev_dbg(dev, "Log address 0x%02x", logical_addr);
 
@@ -402,12 +393,6 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	const struct device *dev = cec->dev;
 	struct seco_meccec_tx_t buf = { };
 	int status, idx, i;
-	int ret;
-
-	/* reset status register */
-	ret = ec_cec_status(cec, NULL);
-	if (ret)
-		dev_err(dev, "enable: status operation failed (%d)", ret);
 
 	dev_dbg(dev, "Device transmitting");
 
@@ -421,6 +406,7 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	buf.size = msg->len - 1;
 	memcpy(buf.data, msg->msg + 1, buf.size);
 
+	/* TODO: debug, remove */
 	dev_dbg(dev, "tx_buf:");
 	dev_dbg(dev, "send: 0x%0x", buf.send);
 	dev_dbg(dev, "dest: 0x%0x", buf.dest);
@@ -438,11 +424,6 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	status = ec_send_command(pdev, CEC_WRITE_CMD,
 				 &buf, sizeof(struct seco_meccec_tx_t),
 				 NULL, 0);
-
-	/* reset status register */
-	ret = ec_cec_status(cec, NULL);
-	if (ret)
-		dev_err(dev, "enable: status operation failed (%d)", ret);
 
 	return status;
 }
@@ -468,14 +449,12 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	struct cec_adapter *adap = cec->cec_adap[adap_idx];
 	struct seco_meccec_rx_t buf = { .bus = adap_idx };
 	struct cec_msg msg = { };
-	bool flag_overflow = false;
 	int status;
 	int i = 0;
 
 	if (status_val & SECOCEC_STATUS_RX_OVERFLOW_MASK) {
 		/* NOTE: Untested, it also might not be necessary */
 		dev_warn(dev, "Received more than 16 bytes. Discarding");
-		flag_overflow = true;
 	}
 
 	if (status_val & SECOCEC_STATUS_RX_ERROR_MASK) {
@@ -485,8 +464,8 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	}
 	/* Read message buffer */
 	status = ec_send_command(pdev, CEC_READ_CMD,
-			&buf, sizeof(struct seco_meccec_rx_t),
-			&buf, sizeof(struct seco_meccec_rx_t));
+				 &buf, sizeof(struct seco_meccec_rx_t),
+				 &buf, sizeof(struct seco_meccec_rx_t));
 	if (status)
 		return;
 
@@ -499,13 +478,7 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 
 	memcpy(msg.msg + 1, buf.data, buf.size);
 
-	dev_dbg(dev, "rx_buf_raw:");
-
-	u8 *fub = (u8*)&buf;
-
-	for (i = 0; i < sizeof(struct seco_meccec_rx_t); i++)
-	         dev_dbg(dev, "%02d: %02x", i, *(fub + i));
-
+	/* TODO: debug, remove */
 	dev_dbg(dev, "rx_buf:");
 	dev_dbg(dev, "bus: %d", buf.bus);
 	dev_dbg(dev, "send: 0x%0x", buf.send);
@@ -569,7 +542,9 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 			if (cec_val & SECOCEC_STATUS_MSG_SENT_MASK)
 				meccec_tx_done(cec, idx, cec_val);
 
-			/* TODO: improve this or remove, it should take care of other channels */
+			/* TODO: improve this or remove, it should take care of
+			 * other channels */
+
 			if ((~cec_val & SECOCEC_STATUS_MSG_SENT_MASK) &&
 					(~cec_val & SECOCEC_STATUS_MSG_RECEIVED_MASK))
 				dev_warn_once(dev,
@@ -753,9 +728,8 @@ static int seco_meccec_probe(struct platform_device *pdev)
 
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (meccec->channels & BIT_MASK(idx)) {
-
-			struct cec_adapter* acec = meccec->cec_adap[idx];
-			struct cec_notifier* ncec;
+			struct cec_adapter *acec = meccec->cec_adap[idx];
+			struct cec_notifier *ncec;
 
 			if (!acec) {
 				ret = -EINVAL;
@@ -763,7 +737,7 @@ static int seco_meccec_probe(struct platform_device *pdev)
 			}
 
 			ncec = cec_notifier_cec_adap_register(hdmi_dev,
-					conn[idx], acec);
+							      conn[idx], acec);
 
 			dev_dbg(dev, "CEC notifier #%d allocated %s", idx, conn[idx]);
 
@@ -792,7 +766,6 @@ static int seco_meccec_probe(struct platform_device *pdev)
 
 	return ret;
 
-
 err_notifier:
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (meccec->channels & BIT_MASK(idx)) {
@@ -801,7 +774,7 @@ err_notifier:
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
 			cec_notifier_cec_adap_unregister(meccec->notifier[idx],
-					meccec->cec_adap[idx]);
+							 meccec->cec_adap[idx]);
 #else
 			cec_notifier_cec_adap_unregister(meccec->notifier[idx]);
 #endif
@@ -831,7 +804,7 @@ static int seco_meccec_remove(struct platform_device *pdev)
 		if (meccec->channels && BIT_MASK(idx)) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0))
 			cec_notifier_cec_adap_unregister(meccec->notifier[idx],
-					meccec->cec_adap[idx]);
+							 meccec->cec_adap[idx]);
 #else
 			cec_notifier_cec_adap_unregister(meccec->notifier[idx]);
 #endif
