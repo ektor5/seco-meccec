@@ -8,14 +8,12 @@
 
 #include <linux/module.h>
 #include <linux/acpi.h>
-#include <linux/delay.h>
 #include <linux/dmi.h>
 #include <linux/gpio/consumer.h>
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
-#include <linux/time.h>
 #include <linux/version.h>
 
 /* CEC Framework */
@@ -23,7 +21,6 @@
 
 #include "seco-meccec.h"
 
-#define DEBUG
 #define SECO_MECCEC_DEV_NAME "seco_meccec"
 #define MECCEC_MAX_CEC_ADAP 4
 #define MECCEC_MAX_ADDRS 1
@@ -39,50 +36,16 @@ struct seco_meccec_data {
 	int irq;
 };
 
-/*
- *
- *static uint8_t hwio_config_op(
- *                uint8_t reg,
- *                uint8_t operation,
- *                uint8_t val,
- *                uint8_t* result)
- *{
- *        /// Unlock the configuration
- *        outb(EC_CONFIG_UNLOCK, EC_CONFIG_INDEX);
- *        /// Set the register index
- *        outb(reg, EC_CONFIG_INDEX);
- *
- *        if (operation == READ) {
- *                /// Read the register value
- *                *result = inb(EC_CONFIG_DATA);
- *
- *        }
- *        if (operation == WRITE) {
- *                /// Write the register value
- *                outb(val, EC_CONFIG_DATA);
- *        }
- *
- *        /// Lock the configuration
- *        outb(EC_CONFIG_LOCK, EC_CONFIG_INDEX);
- *
- *        return 0;
- *}
- *
- *#define hwio_config_rd(reg, res) hwio_config_op(reg, READ , 0, result)
- *#define hwio_config_wr(reg, val) hwio_config_op(reg, WRITE, val, NULL)
- *
- */
-
 static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 {
-	// Check still active
+	/* Check still active */
 	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
 		return -EBUSY;
 
-	// Set the register index
+	/* Set the register index */
 	outb(reg, EC_REGISTER_INDEX);
 
-	// Check still active
+	/* Check still active */
 	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
 		return -EBUSY;
 
@@ -90,14 +53,15 @@ static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 		if (!result)
 			return -EINVAL;
 
-		// Read the data value
+		/* Read the data value */
 		*result = inb(EC_REGISTER_DATA);
+
 	} else if (operation == WRITE) {
-		// Write the data value
+		/* Write the data value */
 		outb(data, EC_REGISTER_DATA);
 	}
 
-	// Check still active
+	/* Check still active */
 	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
 		return -EBUSY;
 
@@ -107,80 +71,30 @@ static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 #define ec_reg_byte_rd(reg, res) ec_reg_byte_op(reg, READ, 0, res)
 #define ec_reg_byte_wr(reg, val) ec_reg_byte_op(reg, WRITE, val, NULL)
 
-/// @brief  E.C. status wait
-/// @note   No check is done on the argument; see OemEcSendCommand for details
-/// @param  ui8Status   status to wait for
-/// @param  cmd  command to trigger status change if needed (0 if none)
-/// @return EFI_TIMEOUT if not status in EC_CMD_TIMEOUT attempts
-///         EAPI_STATUS_SUCCESS if successful
 static int ec_waitstatus(u8 status, u8 cmd)
 {
 	int idx;
 
-	// Loop until time-out or Status
+	/* Loop until time-out or Status */
 	for (idx = 0; idx < EC_CMD_TIMEOUT; idx++) {
-		// If status, done
-		if ((inb(MBX_RESOURCE_REGISTER) & AGENT_MASK(AGENT_USER)) == status)
+		u8 res = inb(MBX_RESOURCE_REGISTER);
+
+		/* If status, done */
+		if ((res & AGENT_MASK(AGENT_USER)) == status)
 			return 0;
 
-		/// Send command if needed
+		/* Send command if needed */
 		if (cmd)
 			outb_p(cmd, MBX_RESOURCE_REGISTER);
 	}
 
-	/// Time-out expired
+	/* Time-out expired */
 	return -EAGAIN;
 }
 
-/// @brief   Send command to E.C.
-/// @note    No check is done on the arguments validity
-/// @details To guarantee atomic command execution, any agent will acquire an
-///          hardware semaphore; these semaphores are implemented via the data
-///          I/O of an ACPI-ECI interface, which will give on reads the
-///          combined status of the agents and will trigger on writes the
-///          actions of acquiring/releasing resources: due to the hardware
-///          mechanism, the commands will be repeatedly written until the
-///          desired status comes or a time-out expires. The true commands will
-///          be sent instead on the Mail Box interface, that can not be
-///          accessed atomically because of the Index/Data access method, so
-///          are sequentially used by only one agent at a time. These is why
-///          the algorithm is the following:
-///          1) wait for the idle state, continuously sending
-///             RELEASE_MBX_ACCESS_CMD: if the E.C. is working, this is fast;
-///          2) wait for queued state, continuously sending REQUEST_MBX_ACCESS;
-///          3) wait for active state, with a sufficiently long time-out;
-///          4) fill MBX with parameters, send command and wait for done state;
-///          5) read result and if success read data if any;
-///          6) in any case, repeat pass 1 to release resources.
-///          This last pass must be done even in case of failure of any of the
-///          preceding, to make the E.C. return to the idle state as soon as
-///          possible.
-///          The E.C. is responsible for maintaining only one active agent at a
-///          time, with a round robin algorithm to avoid infinite waiting, and
-///          to switch to the next agent when a request is pending, either at
-///          the completion of a command or when in IDLE phase after reception
-///          of REQUEST_MBX_ACCESS command.
-///          When an agent is active, i.e. it is sure to have exclusive access
-///          to all the MailBox registers, it can fill the MailBox with the
-///          command parameters, send the command, wait for completion, save
-///          the completion code and the command output data before releasing
-///          the exclusive access.
-///          The only registers shared by all the agents at any time are those
-///          related to the ACPI-ECI interface.
-/// @param   cmd       Command to be sent, of type MBX_CMDS
-/// @param   pui8InputBuffer  E.C. input data buffer, NULL if not required
-/// @param   ui8InputLength   E.C. input buffer length, limited by EC_MBX_SIZE
-/// @param   pui8OutputBuffer E.C. output data buffer, NULL if not required
-/// @param   tx_size  E.C. output buffer length, limited by EC_MBX_SIZE
-/// @return  EAPI_STATUS_TIMEOUT       if E.C. not present or malfunctioning
-///          EAPI_STATUS_TIMEOUT           if any phase lasts too much
-///          EFI_UNSUPPORTED       if EC_UNKNOWN_COMMAND_ERROR
-///          EFI_INVALID_PARAMETER if EC_INVALID_ARGUMENT_ERROR
-///          EFI_DEVICE_ERROR      if unknown error
-///          EAPI_STATUS_SUCCESS           if successful
 static int ec_send_command(const struct platform_device *pdev, u8 cmd,
-			   void *rx_buf, u8 rx_size,
-			   void *tx_buf, u8 tx_size)
+			   void *tx_buf, u8 tx_size,
+			   void *rx_buf, u8 rx_size)
 {
 	struct seco_meccec_data *meccec = platform_get_drvdata(pdev);
 	const struct device *dev = meccec->dev;
@@ -192,14 +106,14 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 
 	mutex_lock(&ec_mutex);
 
-	// Wait for BIOS agent idle (should be already if all works)
+	/* Wait for BIOS agent idle */
 	status = ec_waitstatus(AGENT_IDLE(AGENT_USER), 0);
 	if (status) {
 		dev_err(dev, "Mailbox agent not available");
 		goto err;
 	}
 
-	// BIOS agent is idle: we can request access
+	/* BIOS agent is idle: we can request access */
 	status = ec_waitstatus(AGENT_ACTIVE(AGENT_USER),
 			       REQUEST_MBX_ACCESS(AGENT_USER));
 	if (status) {
@@ -207,8 +121,8 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		goto err;
 	}
 
-	// We now prepare MBX data if we can
-	for (buf = (uint8_t *)rx_buf, idx = 0; (!status) && idx < rx_size; idx++)
+	/* Prepare MBX data */
+	for (buf = (uint8_t *)tx_buf, idx = 0; (!status) && idx < tx_size; idx++)
 		status = ec_reg_byte_wr(EC_MBX_REGISTER + idx, buf[idx]);
 
 	if (status) {
@@ -216,28 +130,28 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		goto err;
 	}
 
-	// Send command
+	/* Send command */
 	status = ec_reg_byte_wr(EC_COMMAND_REGISTER, cmd);
 	if (status) {
 		dev_err(dev, "Command write failed");
 		goto err;
 	}
 
-	// Wait for completion
+	/* Wait for completion */
 	status = ec_waitstatus(AGENT_DONE(AGENT_USER), 0);
 	if (status) {
 		dev_err(dev, "Mailbox did not complete after command write");
 		goto err;
 	}
 
-	// Get result code
+	/* Get result code */
 	status = ec_reg_byte_rd(EC_RESULT_REGISTER, &res);
 	if (status) {
 		dev_err(dev, "Result read failed");
 		goto err;
 	}
 
-	// Get result code and translate it
+	/* Get result code and translate it */
 	switch (res) {
 	case EC_NO_ERROR:
 		status = 0;
@@ -264,8 +178,8 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		goto err;
 	}
 
-	// We now have to read return data if we can
-	for (buf = (uint8_t *)tx_buf, idx = 0; !status && idx < tx_size; idx++)
+	/* Read return data */
+	for (buf = (uint8_t *)rx_buf, idx = 0; !status && idx < rx_size; idx++)
 		status = ec_reg_byte_rd(EC_MBX_REGISTER + idx, &buf[idx]);
 
 	if (status) {
@@ -273,7 +187,7 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		goto err;
 	}
 
-	// Release access, ignoring eventual time-out
+	/* Release access, ignoring eventual time-out */
 	ec_waitstatus(AGENT_IDLE(AGENT_USER), RELEASE_MBX_ACCESS(AGENT_USER));
 
 err:
@@ -328,7 +242,6 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 	int ret;
 
 	ret = ec_send_command(pdev, GET_CEC_STATUS_CMD,
-			      //NULL, 0,
 			      &buf, sizeof(struct seco_meccec_status_t),
 			      &buf, sizeof(struct seco_meccec_status_t));
 	if (ret)
@@ -423,7 +336,7 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	struct platform_device *pdev = cec->pdev;
 	const struct device *dev = cec->dev;
 	struct seco_meccec_tx_t buf = { };
-	int status, idx, i;
+	int status, idx;
 
 	dev_dbg(dev, "Device transmitting");
 
@@ -436,21 +349,6 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	buf.dest = msg->msg[0] & 0x0f;
 	buf.size = msg->len - 1;
 	memcpy(buf.data, msg->msg + 1, buf.size);
-
-	/* TODO: debug, remove */
-	dev_dbg(dev, "tx_buf:");
-	dev_dbg(dev, "send: 0x%0x", buf.send);
-	dev_dbg(dev, "dest: 0x%0x", buf.dest);
-	for (i = 0; i < buf.size; i++) {
-		dev_dbg(dev, "%02d: %02x", i, buf.data[i]);
-	}
-	dev_dbg(dev, "size: %d", buf.size);
-
-	dev_dbg(dev, "tx_msg:");
-	dev_dbg(dev, "size: %d", msg->len);
-	for (i = 0; i < msg->len; i++) {
-		dev_dbg(dev, "%02d: %02x", i, msg->msg[i]);
-	}
 
 	status = ec_send_command(pdev, CEC_WRITE_CMD,
 				 &buf, sizeof(struct seco_meccec_tx_t),
@@ -481,7 +379,6 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	struct seco_meccec_rx_t buf = { .bus = adap_idx };
 	struct cec_msg msg = { };
 	int status;
-	int i = 0;
 
 	if (status_val & SECOCEC_STATUS_RX_OVERFLOW_MASK) {
 		/* NOTE: Untested, it also might not be necessary */
@@ -508,22 +405,6 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	msg.msg[0] |= (buf.send & 0x0f) << 4;
 
 	memcpy(msg.msg + 1, buf.data, buf.size);
-
-	/* TODO: debug, remove */
-	dev_dbg(dev, "rx_buf:");
-	dev_dbg(dev, "bus: %d", buf.bus);
-	dev_dbg(dev, "send: 0x%0x", buf.send);
-	dev_dbg(dev, "dest: 0x%0x", buf.dest);
-	for (i = 0; i < buf.bus; i++) {
-		dev_dbg(dev, "%02d: %02x", i, buf.data[i]);
-	}
-	dev_dbg(dev, "size: %d", buf.size);
-
-	dev_dbg(dev, "rx_msg:");
-	dev_dbg(dev, "size: %d", msg.len);
-	for (i = 0; i < msg.len; i++) {
-		dev_dbg(dev, "%02d: %02x", i, msg.msg[i]);
-	}
 
 	cec_received_msg(adap, &msg);
 	dev_dbg(dev, "Message received successfully");
@@ -720,10 +601,6 @@ static int seco_meccec_probe(struct platform_device *pdev)
 		ret = -EIO;
 		goto err;
 	}
-
-	/* for (each enabled cec)
-	 *	do probe
-	 */
 
 	hdmi_dev = seco_meccec_find_hdmi_dev(&pdev->dev, &conn);
 	if (IS_ERR(hdmi_dev)) {
