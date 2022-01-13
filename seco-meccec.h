@@ -5,37 +5,9 @@
  * Copyright (C) 2022, SECO SpA.
  */
 
-/* Configuration access definitions */
-/* Not useful now
- *#define EC_CONFIG_INDEX     MEC_CONFIG_BAR
- *#define EC_CONFIG_DATA      ( EC_CONFIG_INDEX + 1 )
- *#define EC_CONFIG_UNLOCK    MEC_CONFIG_UNLOCK
- *#define EC_CONFIG_LOCK      MEC_CONFIG_LOCK
- */
-/*
- * /// ID
- *#define EC_CONFIG_ID        0x20
- *#define EC_CONFIG_REV       0x21
- *#define EC_CONFIG_BAD_ID1   0
- *#define EC_CONFIG_BAD_ID2   0xffff
- */
-/*
- * /// MBX BAR
- *#define EC_CONFIG_MBX_LOW   ( EC_CONFIG_MBX_ADDR + 2 )
- *#define EC_CONFIG_MBX_HIGH  ( EC_CONFIG_MBX_LOW + 1 )
- */
-
-/*
- * /// Resource BAR
- *#define EC_CONFIG_RES_LOW   ( EC_CONFIG_RES_ADDR + 2 )
- *#define EC_CONFIG_RES_HIGH  ( EC_CONFIG_RES_LOW + 1 )
- */
-
-/* Mail Box  definitions */
+/* MailBox definitions */
 #define EC_REGISTER_INDEX   MBX_ACCESS_BAR
 #define EC_REGISTER_DATA    (EC_REGISTER_INDEX + 1)
-
-/* ACPI compatible format (no enum, struct, union...) */
 
 /* ESPI/LPC definitions */
 #define MBX_RESERVED_SIZE        0x10
@@ -130,10 +102,6 @@ struct seco_meccec_status_t {
  * @brief   MBX Status bitmap values from E.C. to Host.
  * @note    Refer to Microchip MEC170x DS00002206D data-sheet for naming and
  *          description.
- * @details The bitmap refers to the data byte of the ACPI-ECI EC0 device, plus
- *          bit 0 for init/deinit. All the agents will have an QUEUED and an
- *          ACTIVE bit to register the activity; this allows at most 4 distinct
- *          agents: see the macros following this enum definition.
  */
 enum MBX_STATUS {
 	MBX_OFF     = 0,          /*!< Disable MBX Interface */
@@ -164,7 +132,7 @@ enum AGENT_IDS {
 };
 
 /**
- * @brief MBX command return codes: 0 = success.
+ * MBX command results.
  */
 enum CMD_RESULT {
 	EC_NO_ERROR = 0,           /*!< Success          */
@@ -175,73 +143,17 @@ enum CMD_RESULT {
 };
 
 /**
- * @brief   MBX commands.
- * @note    Maintained accordingly to corresponding library modules.
- * @details The type is uint8_t, so at most 0x100 values starting from 0.
- *          REQUEST_MBX_ACCESS_CMD is the first not hookable command, so it is
- *          used also as size in the command handlers table; this is why all
- *          the other not hookable commands must be greater. There is one
- *          request and one release access command for each agent: see the
- *          macros following this enum definition; this is why there must be at
- *          least AGENT_NONE long holes after REQUEST_MBX_ACCESS_CMD and
- *          RELEASE_MBX_ACCESS_CMD.
+ * MBX commands.
  */
 enum MBX_CMDS {
-	REQUEST_MBX_ACCESS_CMD   = 0xf0, /*!< First request access command           */
-	RELEASE_MBX_ACCESS_CMD   = 0xf8, /*!< First release access command           */
 	GET_FIRMWARE_VERSION_CMD = 0,    /*!< Get firmware version record            */
-	ASSERT_SYSTEM_RESET_CMD  = 1,    /*!< Reset the Embedded Controller          */
-	RSTBTN_RESET_CMD         = 2,    /*!< Reset the Host with Reset Button       */
-	PWRBTN_SHUTDOWN_CMD      = 3,    /*!< Shutdown the Host with Power Button 4s */
-	GET_STATUS_REGISTER      = 4,    /*!< Read custom status register            */
-	CLR_STATUS_REGISTER      = 5,    /*!< Write/Clear custom status register     */
-	GET_ENABLE_REGISTER      = 6,    /*!< Read custom enable register            */
-	SET_ENABLE_REGISTER      = 7,    /*!< Write/Set custom enable register       */
-	CLR_ENABLE_REGISTER      = 8,    /*!< Write/Clear custom enable register     */
-	SET_FEATURE_VARIABLE     = 9,    /*!< Write flavor feature variable          */
-	GET_FEATURE_VARIABLE     = 0xa,  /*!< Read flavor feature variable           */
-	GET_UART_CONFIG          = 0xb,  /*!< Read current UART configuration        */
-	SET_UART_CONFIG          = 0xc,  /*!< Write UART configuration               */
-	ACCESS_I2C_CMD           = 0x10, /*!< Access an I2C channel                  */
-	GET_EEPROM_CAPACITY_CMD  = 0x20, /*!< Get EEPROM total capacity in bytes     */
-	GET_EEPROM_RESERVED_CMD  = 0x21, /*!< Get EEPROM reserved bytes              */
-	EEPROM_READ_CMD          = 0x22, /*!< Read bytes from EEPROM                 */
-	EEPROM_WRITE_CMD         = 0x23, /*!< Write bytes to EEPROM                  */
-	UTC_READ_CMD             = 0x24, /*!< Read Up Time Counter                   */
-	UTC_WRITE_CMD            = 0x25, /*!< Write Up Time Counter                  */
-	GET_AFTER_G3_CACHE       = 0x26, /*!< Get previous after G3 state            */
-	GET_AFTER_G3_STATE       = 0x27, /*!< Get current after G3 configuration     */
-	GET_LAST_STATE           = 0x28, /*!< Get last power state detected          */
-	SET_AFTER_G3_STATE       = 0x29, /*!< Set after G3 configuration             */
-	GET_RESET_CAUSES_CMD     = 0x2a, /*!< Get reset causes since last clearing   */
-	CLEAR_RESET_CAUSES_CMD   = 0x2b, /*!< Clear reset causes                     */
-	SET_PORT_80_DEBUG_CMD    = 0x2c, /*!< Set Port 80 on serial debug features   */
-	FAN_RPM_READ_CMD         = 0x30, /*!< Read FAN RPM speed                     */
-	FAN_DC_READ_CMD          = 0x31, /*!< Read FAN Duty Cycle                    */
-	FAN_DC_WRITE_CMD         = 0x32, /*!< Write FAN Duty Cycle                   */
-	FAN_FREQ_READ_CMD        = 0x33, /*!< Read FAN Duty Frequency                */
-	FAN_FREQ_WRITE_CMD       = 0x34, /*!< Write FAN Duty Frequency               */
-	FAN_TYPE_WRITE_CMD       = 0x35, /*!< Write FAN type                         */
-	FAN_TEMP_READ_CMD        = 0x36, /*!< Read FAN Regulating Temperature        */
-	FAN_TEMP_WRITE_CMD       = 0x37, /*!< Write FAN Regulating Temperature       */
-	FAN_THERM_MGMT_CFG_CMD   = 0x38, /*!< Write FAN Regulating Parameters        */
-	FAN_RAMP_READ_CMD        = 0x39, /*!< Read FAN speed change duration         */
-	FAN_RAMP_WRITE_CMD       = 0x3a, /*!< Write FAN speed change duration        */
-	FAN_ENABLE_CFG_CMD       = 0x3b, /*!< Enable and configure FAN               */
-	FAN_DISABLE_CMD          = 0x3c, /*!< Full FAN Disabling                     */
-	SPI_ACCESS_CMD           = 0x40, /*!< Access of SPI Channel                  */
-	GPIO_ACCESS_CMD          = 0x50, /*!< Access of GPIO PIN                     */
-	WDT_CONFIG_CMD           = 0x60, /*!< WDT configuration                      */
-	WDT_START_CMD            = 0x61, /*!< WDT start                              */
-	WDT_REFRESH_CMD          = 0x62, /*!< WDT software refresh                   */
-	WDT_STOP_CMD             = 0x63, /*!< WDT stop                               */
-	ACCESS_ADC_CMD           = 0x70, /*!< Access an ADC channel                  */
-	ACCESS_RCID_CMD          = 0x71, /*!< Access RC_ID                           */
 	CEC_WRITE_CMD		 = 0x72, /*!< Write CEC command                      */
 	CEC_READ_CMD		 = 0x73, /*!< Read CEC command                       */
 	GET_CEC_STATUS_CMD	 = 0x74, /*!< Get CEC status regisers                */
 	SET_CEC_LOGADDR_CMD	 = 0x75, /*!< Set CEC Logical Address                */
-	SET_CEC_PHYADDR_CMD	 = 0x75, /*!< Set CEC Logical Address                */
+	SET_CEC_PHYADDR_CMD	 = 0x76, /*!< Set CEC Physical Address               */
+	REQUEST_MBX_ACCESS_CMD   = 0xf0, /*!< First request access command           */
+	RELEASE_MBX_ACCESS_CMD   = 0xf8, /*!< First release access command           */
 };
 
 #define REQUEST_MBX_ACCESS(x) (REQUEST_MBX_ACCESS_CMD + x)
