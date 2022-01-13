@@ -346,6 +346,26 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 	return 0;
 }
 
+static int meccec_adap_phys_addr(struct cec_adapter *adap, u16 phys_addr)
+{
+	struct seco_meccec_data *cec = cec_get_drvdata(adap);
+	const struct platform_device *pdev = cec->pdev;
+	const struct device *dev = cec->dev;
+	struct seco_meccec_phyaddr_t buf = { };
+	int status;
+
+	buf.bus = find_adap_idx(adap);
+	buf.addr = cpu_to_be32(phys_addr);
+
+	/* Need to tell physical address to wake up while standby */
+	status = ec_send_command(pdev, SET_CEC_PHYADDR_CMD,
+				 &buf, sizeof(struct seco_meccec_phyaddr_t),
+				 NULL, 0);
+	dev_dbg(dev, "Physical address 0x%04x", phys_addr);
+
+	return status;
+}
+
 static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 {
 	struct seco_meccec_data *cec = cec_get_drvdata(adap);
@@ -360,25 +380,12 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	status = ec_send_command(pdev, SET_CEC_LOGADDR_CMD,
 				 &buf, sizeof(struct seco_meccec_logaddr_t),
 				 NULL, 0);
+	dev_dbg(dev, "Logical address 0x%02x", logical_addr);
 
-	dev_dbg(dev, "Log address 0x%02x", logical_addr);
-
-	return status;
-}
-
-static int meccec_adap_phys_addr(struct cec_adapter *adap)
-{
-	struct seco_meccec_data *cec = cec_get_drvdata(adap);
-	struct platform_device *pdev = cec->pdev;
-	struct seco_meccec_phyaddr_t buf = { };
-	int status;
-
-	buf.bus = find_adap_idx(adap);
-	buf.addr = cpu_to_be32(adap->phys_addr);
-
-	status = ec_send_command(pdev, SET_CEC_PHYADDR_CMD,
-				 &buf, sizeof(struct seco_meccec_phyaddr_t),
-				 NULL, 0);
+	/* When setting LA, adap has valid physical address */
+	status = meccec_adap_phys_addr(adap, adap->phys_addr);
+	if (status)
+		dev_err(dev, "Set physical address failed (%d)", status);
 
 	return status;
 }
@@ -394,15 +401,16 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 	if (ret)
 		dev_err(dev, "enable: status operation failed (%d)", ret);
 
-	if (enable)
+	if (enable) {
 		dev_dbg(dev, "Device enabled");
-	else
+	} else {
 		dev_dbg(dev, "Device disabled");
 
-	ret = meccec_adap_phys_addr(adap);
-	if (ret) {
-		dev_err(dev, "enable: set physical address failed (%d)", ret);
-		return ret;
+		ret = meccec_adap_phys_addr(adap, CEC_PHYS_ADDR_INVALID);
+		if (ret) {
+			dev_err(dev, "enable: set physical address failed (%d)", ret);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -647,7 +655,7 @@ static int seco_meccec_acpi_probe(struct seco_meccec_data *sdev)
 	dev_dbg(dev, "irq-gpio is bound to IRQ %d", irq);
 	sdev->irq = irq;
 
-	/* get info from ACPI about channels capabilities */
+	/* Get info from ACPI about channels capabilities */
 	ret = acpi_dev_get_property(adev, "av-channels",  ACPI_TYPE_INTEGER, &obj);
 	if (ret < 0) {
 		dev_err(dev, "Cannot retrieve channel properties");
