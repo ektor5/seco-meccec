@@ -14,7 +14,7 @@
 #define MBX_RESERVED_BASE        0x2b0
 #define MBX_BASE_FROM_CFG_BAR(x) (x - CFG_BAR_OFFSET)
 
-/* Mail Box  definitions */
+/* MailBox definitions */
 #define RES_BAR_OFFSET           0
 #define RES_BAR_FROM_MBX_BASE(x) (x + RES_BAR_OFFSET)
 #define MBX_RESOURCE_REGISTER    RES_BAR_FROM_MBX_BASE(MBX_RESERVED_BASE)
@@ -30,11 +30,9 @@
 #define EC_MBX_REGISTER          0x10
 
 /* Software definitions */
-#define EC_CMD_TIMEOUT      0x30000 //  Maximum wait loop
+#define EC_CMD_TIMEOUT      0x30000 /* Maximum wait loop */
 
-/**
- * @brief GET_FIRMWARE_VERSION_CMD data struct and definitions
- */
+/* Firmware version data struct and definitions */
 #define FIRMWARE_TIME_STAMP_SIZE (EC_MBX_SIZE - sizeof(uint32_t))
 
 struct version_t {
@@ -48,9 +46,7 @@ struct version_msg_t {
 	u8 firmware_ts[FIRMWARE_TIME_STAMP_SIZE];
 };
 
-/**
- * @brief CEC data struct and constant definitions
- */
+/* CEC data structs and constant definitions */
 #define MECCEC_MAX_MSG_SIZE 16
 
 struct seco_meccec_tx_t {
@@ -86,10 +82,7 @@ struct seco_meccec_status_t {
 	u8 status_ch3;
 };
 
-/*
- * Status data
- */
-
+/* Status data */
 #define SECOCEC_STATUS_MSG_RECEIVED_MASK	BIT(0)
 #define SECOCEC_STATUS_RX_ERROR_MASK		BIT(1)
 #define SECOCEC_STATUS_MSG_SENT_MASK		BIT(2)
@@ -98,16 +91,12 @@ struct seco_meccec_status_t {
 #define SECOCEC_STATUS_TX_NACK_ERROR		BIT(4)
 #define SECOCEC_STATUS_RX_OVERFLOW_MASK		BIT(5)
 
-/**
- * @brief   MBX Status bitmap values from E.C. to Host.
- * @note    Refer to Microchip MEC170x DS00002206D data-sheet for naming and
- *          description.
- */
+/* MBX Status bitmap values from EC to Host */
 enum MBX_STATUS {
-	MBX_OFF     = 0,          /*!< Disable MBX Interface */
-	MBX_ON      = 1,          /*!< Enable MBX Interface  */
-	MBX_ACTIVE0 = (1 << 6), /*!< MBX AGENT 0 active    */
-	MBX_QUEUED0 = (1 << 7), /*!< MBX AGENT 0 idle      */
+	MBX_OFF     = 0,          /* Disable MBX Interface */
+	MBX_ON      = 1,          /* Enable MBX Interface  */
+	MBX_ACTIVE0 = (1 << 6),   /* MBX AGENT 0 active    */
+	MBX_QUEUED0 = (1 << 7),   /* MBX AGENT 0 idle      */
 };
 
 #define AGENT_IDLE(x)      0
@@ -117,43 +106,34 @@ enum MBX_STATUS {
 #define AGENT_DONE(x)      AGENT_MASK(x)
 #define MBX_STATUS_DEFAULT 0
 
-/**
- * @brief   MBX user IDs.
- * @note    Used to keep track of the current agent.
- * @details As explained in the definition of MBX_STATUS above, AGENT_NONE must
- *          be at most 4.
- */
+/* MBX user IDs */
 enum AGENT_IDS {
-	AGENT_BIOS, /*!< BIOS AGENT */
-	AGENT_ACPI, /*!< ACPI AGENT */
-	AGENT_EAPI, /*!< EAPI AGENT */
-	AGENT_USER, /*!< USER AGENT */
-	AGENT_NONE, /*!< No AGENT   */
+	AGENT_BIOS, /* BIOS AGENT */
+	AGENT_ACPI, /* ACPI AGENT */
+	AGENT_EAPI, /* EAPI AGENT */
+	AGENT_USER, /* USER AGENT */
+	AGENT_NONE, /* No AGENT   */
 };
 
-/**
- * MBX command results.
- */
+/* MBX command results */
 enum CMD_RESULT {
-	EC_NO_ERROR = 0,           /*!< Success          */
-	EC_UNKNOWN_COMMAND_ERROR,  /*!< Unknown command  */
-	EC_INVALID_ARGUMENT_ERROR, /*!< Invalid argument */
-	EC_TIMEOUT_ERROR,          /*!< Waiting Time-out */
-	EC_DEVICE_ERROR,           /*!< Device error     */
+	EC_NO_ERROR = 0,           /* Success          */
+	EC_UNKNOWN_COMMAND_ERROR,  /* Unknown command  */
+	EC_INVALID_ARGUMENT_ERROR, /* Invalid argument */
+	EC_TIMEOUT_ERROR,          /* Waiting Time-out */
+	EC_DEVICE_ERROR,           /* Device error     */
 };
 
-/**
- * MBX commands.
- */
+/* MBX commands */
 enum MBX_CMDS {
-	GET_FIRMWARE_VERSION_CMD = 0,    /*!< Get firmware version record            */
-	CEC_WRITE_CMD		 = 0x72, /*!< Write CEC command                      */
-	CEC_READ_CMD		 = 0x73, /*!< Read CEC command                       */
-	GET_CEC_STATUS_CMD	 = 0x74, /*!< Get CEC status regisers                */
-	SET_CEC_LOGADDR_CMD	 = 0x75, /*!< Set CEC Logical Address                */
-	SET_CEC_PHYADDR_CMD	 = 0x76, /*!< Set CEC Physical Address               */
-	REQUEST_MBX_ACCESS_CMD   = 0xf0, /*!< First request access command           */
-	RELEASE_MBX_ACCESS_CMD   = 0xf8, /*!< First release access command           */
+	GET_FIRMWARE_VERSION_CMD = 0,    /* Get firmware version record            */
+	CEC_WRITE_CMD		 = 0x72, /* Write CEC command                      */
+	CEC_READ_CMD		 = 0x73, /* Read CEC command                       */
+	GET_CEC_STATUS_CMD	 = 0x74, /* Get CEC status regisers                */
+	SET_CEC_LOGADDR_CMD	 = 0x75, /* Set CEC Logical Address                */
+	SET_CEC_PHYADDR_CMD	 = 0x76, /* Set CEC Physical Address               */
+	REQUEST_MBX_ACCESS_CMD   = 0xf0, /* First request access command           */
+	RELEASE_MBX_ACCESS_CMD   = 0xf8, /* First release access command           */
 };
 
 #define REQUEST_MBX_ACCESS(x) (REQUEST_MBX_ACCESS_CMD + x)
