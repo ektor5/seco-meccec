@@ -551,9 +551,9 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 {
 	struct seco_meccec_data *cec = priv;
 	struct device *dev = cec->dev;
-	/*u16 status_val, cec_val, val = 0;*/
-	int ret, idx;
 	struct seco_meccec_status_t status;
+	bool interrupt_served = false;
+	int ret, idx;
 
 	dev_dbg(dev, "Interrupt Called!");
 
@@ -573,15 +573,13 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 			if (cec_val & SECOCEC_STATUS_MSG_SENT_MASK)
 				meccec_tx_done(cec, idx, cec_val);
 
-			/* TODO: improve this or remove, it should take care of
-			 * other channels */
-
-			if ((~cec_val & SECOCEC_STATUS_MSG_SENT_MASK) &&
-					(~cec_val & SECOCEC_STATUS_MSG_RECEIVED_MASK))
-				dev_warn_once(dev,
-					      "Message not received or sent, but interrupt fired");
+			if (cec_val & (SECOCEC_STATUS_MSG_SENT_MASK |
+				       SECOCEC_STATUS_MSG_RECEIVED_MASK))
+				interrupt_served = true;
 		}
 	}
+	if (!interrupt_served)
+		dev_warn(dev, "Message not received or sent, but interrupt fired");
 
 	return IRQ_HANDLED;
 }
