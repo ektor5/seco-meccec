@@ -724,7 +724,27 @@ static int seco_meccec_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int seco_meccec_resume(struct device *dev)
+{
+	struct seco_meccec_data *cec = dev_get_drvdata(dev);
+	int ret;
+
+	dev_dbg(dev, "Device resumed from suspend");
+
+	/* reset status register */
+	ret = ec_cec_status(cec, NULL);
+	if (ret)
+		dev_err(dev, "resume: status operation failed (%d)", ret);
+
+	return ret;
+}
+
+static SIMPLE_DEV_PM_OPS(seco_meccec_pm_ops, NULL, seco_meccec_resume);
+#define SECO_MECCEC_PM_OPS (&seco_meccec_pm_ops)
+#else
 #define SECO_MECCEC_PM_OPS NULL
+#endif
 
 #ifdef CONFIG_ACPI
 static const struct acpi_device_id seco_meccec_acpi_match[] = {
