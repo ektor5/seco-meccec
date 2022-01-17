@@ -268,7 +268,7 @@ static int meccec_adap_phys_addr(struct cec_adapter *adap, u16 phys_addr)
 	int status;
 
 	buf.bus = find_adap_idx(adap);
-	buf.addr = cpu_to_be32(phys_addr);
+	buf.addr = phys_addr;
 
 	/* Need to tell physical address to wake up while standby */
 	status = ec_send_command(pdev, SET_CEC_PHYADDR_CMD,

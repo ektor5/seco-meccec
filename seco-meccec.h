@@ -71,7 +71,7 @@ struct seco_meccec_logaddr_t {
 };
 
 struct seco_meccec_phyaddr_t {
-	u8 bus;
+	u16 bus;
 	u16 addr;
 };
 
