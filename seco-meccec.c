@@ -187,10 +187,10 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		goto err;
 	}
 
+err:
 	/* Release access, ignoring eventual time-out */
 	ec_waitstatus(AGENT_IDLE(AGENT_USER), RELEASE_MBX_ACCESS(AGENT_USER));
 
-err:
 	mutex_unlock(&ec_mutex);
 	return status;
 }
