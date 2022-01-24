@@ -439,8 +439,10 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 	dev_dbg(dev, "Interrupt Called!");
 
 	ret = ec_cec_status(cec, &status);
-	if (ret)
-		dev_err_once(dev, "IRQ: status operation failed (%d)", ret);
+	if (ret) {
+		dev_err(dev, "IRQ: status operation failed (%d)", ret);
+		goto err;
+	}
 
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (cec->channels & BIT_MASK(idx)) {
@@ -461,6 +463,13 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 	}
 	if (!interrupt_served)
 		dev_warn(dev, "Message not received or sent, but interrupt fired");
+
+	return IRQ_HANDLED;
+err:
+	/* reset status register */
+	ret = ec_cec_status(cec, NULL);
+	if (ret)
+		dev_err(dev, "IRQ: operation failed twice (%d)", ret);
 
 	return IRQ_HANDLED;
 }
