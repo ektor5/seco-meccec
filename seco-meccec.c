@@ -483,9 +483,11 @@ struct cec_dmi_match {
 
 static const struct cec_dmi_match secocec_dmi_match_table[] = {
 	/* UDOO BOLT */
-	{ "SECO", "UDOO BOLT", "0000:00:02.0", {"Port B"} },
+	{ "Seco", "UDOO BOLT", "0000:05:00.0", {"Port B", "Port C"} },
+	/* UDOO Vision */
+	{ "Seco", "UDOO Vision", "0000:00:02.0", {"Port B"} },
 	/* SECO SBC-D61 */
-	{ "Seco", "0D61", "0000:00:02.0", {"Port B", "Port C", "Port D", "Port E"} },
+	{ "Seco", "0D61", "0000:00:02.0", {"Port B", "Port C"} },
 };
 
 static struct device *seco_meccec_find_hdmi_dev(struct device *dev,
