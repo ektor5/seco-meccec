@@ -1,14 +1,16 @@
 # CEC Linux Driver for SECO MEC-based Boards
 
-Sources for SECO CEC Driver. Based on Linux CEC Framework and legacy seco-cec driver.
+Sources for SECO MEC-CEC Driver. Based on Linux CEC Framework and legacy seco-cec driver.
 
 Compatible with:
 
-* SECO D61
+* SECO SBC-D61
+* UDOO BOLT (not tested)
+* UDOO Vision (not tested)
 
 ## Requirements
 
-* Linux Kernel >= 4.19 with `CEC_NOTIFIER` support
+* Linux Kernel >= 5.5 with `CEC_NOTIFIER` support
 
 In order to use the driver, there are several methods:
 * Use DKMS (Dynamic Kernel Module System)
@@ -93,14 +95,20 @@ Check the corresponding man pages for info.
 
 ## Debug
 
-To compile the module with debug messages:
+To load the module with debug messages:
 
 ``` bash
-make DEBUG=1
+insmod seco-meccec.ko dyndbg
+```
+
+or
+
+```bash
+modprobe seco-meccec dyndbg
 ```
 
 Feel free to open issues or mail me directly. Make sure to include *dmesg*,
-*lsmod*, etc.. in the bug report.
+*lsmod*, etc... in the bug report.
 
 ## Credits
 
