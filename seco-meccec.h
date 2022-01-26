@@ -5,32 +5,30 @@
  * Copyright (C) 2022, SECO SpA.
  */
 
-/* ESPI/LPC definitions */
-#define MBX_RESERVED_SIZE        0x10
-#define MBX_RESERVED_BASE        0x2b0
-
 /* MailBox definitions */
-#define BAR_FROM_MBX_BASE(x)     (x + MBX_RESERVED_BASE)
+#define MBX_RESERVED_SIZE	0x10
+#define MBX_RESERVED_BASE	0x2b0
 
-#define RES_BAR_OFFSET           0
-#define BSY_BAR_OFFSET           4
-#define MBX_BAR_OFFSET           0xc
+#define BAR_FROM_MBX_BASE(x)	(x + MBX_RESERVED_BASE)
 
-#define MBX_RESOURCE_REGISTER    BAR_FROM_MBX_BASE(RES_BAR_OFFSET)
-#define MBX_BUSY_REGISTER    	 BAR_FROM_MBX_BASE(BSY_BAR_OFFSET)
-#define MBX_ACCESS_BAR           BAR_FROM_MBX_BASE(MBX_BAR_OFFSET)
+#define RES_BAR_OFFSET		0
+#define BSY_BAR_OFFSET		4
+#define MBX_BAR_OFFSET		0xc
 
-#define EC_REGISTER_INDEX   	 MBX_ACCESS_BAR
-#define EC_REGISTER_DATA    	 (EC_REGISTER_INDEX + 1)
-#define EC_MBX_SIZE              0x20
+#define MBX_RESOURCE_REGISTER	BAR_FROM_MBX_BASE(RES_BAR_OFFSET)
+#define MBX_BUSY_REGISTER	BAR_FROM_MBX_BASE(BSY_BAR_OFFSET)
+#define MBX_ACCESS_BAR		BAR_FROM_MBX_BASE(MBX_BAR_OFFSET)
 
-#define EC_COMMAND_REGISTER      0
-#define EC_RESULT_REGISTER       1
-#define EC_STATUS_REGISTER       2
-#define EC_MASK_REGISTER         3
-#define EC_MBX_REGISTER          0x10
+#define EC_REGISTER_INDEX	MBX_ACCESS_BAR
+#define EC_REGISTER_DATA	(EC_REGISTER_INDEX + 1)
+#define EC_MBX_SIZE		0x20
 
-#define EC_CMD_TIMEOUT      	 0x30000 /* Maximum wait loop */
+#define EC_COMMAND_REGISTER	0
+#define EC_RESULT_REGISTER	1
+#define EC_STATUS_REGISTER	2
+#define EC_MBX_REGISTER		0x10
+
+#define EC_CMD_TIMEOUT		0x30000 /* Maximum wait loop */
 
 /* Firmware version data struct and definitions */
 #define FIRMWARE_TIME_STAMP_SIZE (EC_MBX_SIZE - sizeof(u32))
@@ -85,10 +83,10 @@ struct seco_meccec_status_t {
 
 /* MBX Status bitmap values from EC to Host */
 enum MBX_STATUS {
-	MBX_OFF     = 0,          /* Disable MBX Interface */
-	MBX_ON      = 1,          /* Enable MBX Interface  */
-	MBX_ACTIVE0 = (1 << 6),   /* MBX AGENT 0 active    */
-	MBX_QUEUED0 = (1 << 7),   /* MBX AGENT 0 idle      */
+	MBX_OFF     = 0,	/* Disable MBX Interface */
+	MBX_ON      = 1,	/* Enable MBX Interface  */
+	MBX_ACTIVE0 = (1 << 6),	/* MBX AGENT 0 active    */
+	MBX_QUEUED0 = (1 << 7),	/* MBX AGENT 0 idle      */
 };
 
 #define AGENT_IDLE(x)      0
@@ -109,23 +107,23 @@ enum AGENT_IDS {
 
 /* MBX command results */
 enum CMD_RESULT {
-	EC_NO_ERROR = 0,           /* Success          */
-	EC_UNKNOWN_COMMAND_ERROR,  /* Unknown command  */
-	EC_INVALID_ARGUMENT_ERROR, /* Invalid argument */
-	EC_TIMEOUT_ERROR,          /* Waiting Time-out */
-	EC_DEVICE_ERROR,           /* Device error     */
+	EC_NO_ERROR = 0,		/* Success	    */
+	EC_UNKNOWN_COMMAND_ERROR,	/* Unknown command  */
+	EC_INVALID_ARGUMENT_ERROR,	/* Invalid argument */
+	EC_TIMEOUT_ERROR,		/* Waiting Time-out */
+	EC_DEVICE_ERROR,		/* Device error     */
 };
 
 /* MBX commands */
 enum MBX_CMDS {
-	GET_FIRMWARE_VERSION_CMD = 0,    /* Get firmware version record            */
-	CEC_WRITE_CMD		 = 0x72, /* Write CEC command                      */
-	CEC_READ_CMD		 = 0x73, /* Read CEC command                       */
-	GET_CEC_STATUS_CMD	 = 0x74, /* Get CEC status regisers                */
-	SET_CEC_LOGADDR_CMD	 = 0x75, /* Set CEC Logical Address                */
-	SET_CEC_PHYADDR_CMD	 = 0x76, /* Set CEC Physical Address               */
-	REQUEST_MBX_ACCESS_CMD   = 0xf0, /* First request access command           */
-	RELEASE_MBX_ACCESS_CMD   = 0xf8, /* First release access command           */
+	GET_FIRMWARE_VERSION_CMD = 0,    /* Get firmware version record		*/
+	CEC_WRITE_CMD		 = 0x72, /* Write CEC command			*/
+	CEC_READ_CMD		 = 0x73, /* Read CEC command			*/
+	GET_CEC_STATUS_CMD	 = 0x74, /* Get CEC status regisers		*/
+	SET_CEC_LOGADDR_CMD	 = 0x75, /* Set CEC Logical Address		*/
+	SET_CEC_PHYADDR_CMD	 = 0x76, /* Set CEC Physical Address		*/
+	REQUEST_MBX_ACCESS_CMD   = 0xf0, /* First request access command	*/
+	RELEASE_MBX_ACCESS_CMD   = 0xf8, /* First release access command	*/
 };
 
 #define REQUEST_MBX_ACCESS(x) (REQUEST_MBX_ACCESS_CMD + x)
