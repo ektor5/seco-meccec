@@ -24,6 +24,7 @@
 #define SECO_MECCEC_DEV_NAME "seco_meccec"
 #define MECCEC_MAX_CEC_ADAP 4
 #define MECCEC_MAX_ADDRS 1
+#define MECCEC_MAX_STATUS_RETRIES 10
 
 static DEFINE_MUTEX(ec_mutex);
 
@@ -239,11 +240,20 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 	const struct device *dev = cec->dev;
 	const struct platform_device *pdev = cec->pdev;
 	struct seco_meccec_status_t buf = { 0 };
-	int ret;
+	int ret, i;
 
-	ret = ec_send_command(pdev, GET_CEC_STATUS_CMD,
-			      &buf, sizeof(struct seco_meccec_status_t),
-			      &buf, sizeof(struct seco_meccec_status_t));
+	/* retry until get status or interrupt will not reset */
+	for (i = 0; i < MECCEC_MAX_STATUS_RETRIES; i++) {
+		ret = ec_send_command(pdev, GET_CEC_STATUS_CMD,
+				      &buf, sizeof(struct seco_meccec_status_t),
+				      &buf, sizeof(struct seco_meccec_status_t));
+		if (ret) {
+			dev_dbg(dev, "Status: Mailbox is busy. Retrying.");
+			continue;
+		}
+		break;
+	}
+
 	if (ret)
 		return ret;
 
@@ -440,7 +450,7 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 
 	ret = ec_cec_status(cec, &status);
 	if (ret) {
-		dev_err(dev, "IRQ: status operation failed (%d)", ret);
+		dev_warn(dev, "IRQ: status cmd failed (%d)", ret);
 		goto err;
 	}
 
@@ -469,7 +479,7 @@ err:
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "IRQ: operation failed twice (%d)", ret);
+		dev_err(dev, "IRQ: status cmd failed twice (%d)", ret);
 
 	return IRQ_HANDLED;
 }
