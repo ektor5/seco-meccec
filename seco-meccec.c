@@ -39,15 +39,19 @@ struct seco_meccec_data {
 
 static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 {
+	int res;
+
 	/* Check still active */
-	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
+	res = inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER);
+	if (!res)
 		return -EBUSY;
 
 	/* Set the register index */
 	outb(reg, EC_REGISTER_INDEX);
 
 	/* Check still active */
-	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
+	res = inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER);
+	if (!res)
 		return -EBUSY;
 
 	if (operation == READ) {
@@ -63,7 +67,8 @@ static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 	}
 
 	/* Check still active */
-	if (!(inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER)))
+	res = inb(MBX_RESOURCE_REGISTER) & AGENT_ACTIVE(AGENT_USER);
+	if (!res)
 		return -EBUSY;
 
 	return 0;
