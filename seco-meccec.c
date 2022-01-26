@@ -362,7 +362,7 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	struct seco_meccec_data *cec = cec_get_drvdata(adap);
 	struct platform_device *pdev = cec->pdev;
 	const struct device *dev = cec->dev;
-	struct seco_meccec_tx_t buf = { };
+	struct seco_meccec_msg_t buf = { };
 	int status, idx;
 
 	dev_dbg(dev, "Device transmitting");
@@ -378,7 +378,7 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	memcpy(buf.data, msg->msg + 1, buf.size);
 
 	status = ec_send_command(pdev, CEC_WRITE_CMD,
-				 &buf, sizeof(struct seco_meccec_tx_t),
+				 &buf, sizeof(struct seco_meccec_msg_t),
 				 NULL, 0);
 
 	return status;
@@ -403,7 +403,7 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	struct device *dev = cec->dev;
 	struct platform_device *pdev = cec->pdev;
 	struct cec_adapter *adap = cec->cec_adap[adap_idx];
-	struct seco_meccec_rx_t buf = { .bus = adap_idx };
+	struct seco_meccec_msg_t buf = { .bus = adap_idx };
 	struct cec_msg msg = { };
 	int status;
 
@@ -419,8 +419,8 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	}
 	/* Read message buffer */
 	status = ec_send_command(pdev, CEC_READ_CMD,
-				 &buf, sizeof(struct seco_meccec_rx_t),
-				 &buf, sizeof(struct seco_meccec_rx_t));
+				 &buf, sizeof(struct seco_meccec_msg_t),
+				 &buf, sizeof(struct seco_meccec_msg_t));
 	if (status)
 		return;
 

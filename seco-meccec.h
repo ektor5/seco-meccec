@@ -49,15 +49,7 @@ struct version_msg_t {
 /* CEC data structs and constant definitions */
 #define MECCEC_MAX_MSG_SIZE 16
 
-struct seco_meccec_tx_t {
-	u8 bus;
-	u8 send;
-	u8 dest;
-	u8 data[MECCEC_MAX_MSG_SIZE];
-	u8 size;
-};
-
-struct seco_meccec_rx_t {
+struct seco_meccec_msg_t {
 	u8 bus;
 	u8 send;
 	u8 dest;
