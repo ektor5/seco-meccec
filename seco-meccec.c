@@ -85,8 +85,20 @@ static int ec_waitstatus(u8 status, u8 cmd)
 			return 0;
 
 		/* Send command if needed */
-		if (cmd)
-			outb_p(cmd, MBX_RESOURCE_REGISTER);
+		if (!cmd)
+			continue;
+
+		/* Retry sending command when mailbox is free */
+		for ( ; idx < EC_CMD_TIMEOUT; idx++) {
+			/* Check busy bit */
+			res = inb(MBX_BUSY_REGISTER) & EC_STATUS_REGISTER;
+
+			if (!res) {
+				/* Send command */
+				outb_p(cmd, MBX_BUSY_REGISTER);
+				break;
+			}
+		}
 	}
 
 	/* Time-out expired */
