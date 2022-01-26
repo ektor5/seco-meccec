@@ -5,22 +5,23 @@
  * Copyright (C) 2022, SECO SpA.
  */
 
-/* MailBox definitions */
-#define EC_REGISTER_INDEX   MBX_ACCESS_BAR
-#define EC_REGISTER_DATA    (EC_REGISTER_INDEX + 1)
-
 /* ESPI/LPC definitions */
 #define MBX_RESERVED_SIZE        0x10
 #define MBX_RESERVED_BASE        0x2b0
-#define MBX_BASE_FROM_CFG_BAR(x) (x - CFG_BAR_OFFSET)
 
 /* MailBox definitions */
+#define BAR_FROM_MBX_BASE(x)     (x + MBX_RESERVED_BASE)
+
 #define RES_BAR_OFFSET           0
-#define RES_BAR_FROM_MBX_BASE(x) (x + RES_BAR_OFFSET)
-#define MBX_RESOURCE_REGISTER    RES_BAR_FROM_MBX_BASE(MBX_RESERVED_BASE)
+#define BSY_BAR_OFFSET           4
 #define MBX_BAR_OFFSET           0xc
-#define MBX_BAR_FROM_MBX_BASE(x) (x + MBX_BAR_OFFSET)
-#define MBX_ACCESS_BAR           MBX_BAR_FROM_MBX_BASE(MBX_RESERVED_BASE)
+
+#define MBX_RESOURCE_REGISTER    BAR_FROM_MBX_BASE(RES_BAR_OFFSET)
+#define MBX_BUSY_REGISTER    	 BAR_FROM_MBX_BASE(BSY_BAR_OFFSET)
+#define MBX_ACCESS_BAR           BAR_FROM_MBX_BASE(MBX_BAR_OFFSET)
+
+#define EC_REGISTER_INDEX   	 MBX_ACCESS_BAR
+#define EC_REGISTER_DATA    	 (EC_REGISTER_INDEX + 1)
 #define EC_MBX_SIZE              0x20
 
 #define EC_COMMAND_REGISTER      0
@@ -29,11 +30,10 @@
 #define EC_MASK_REGISTER         3
 #define EC_MBX_REGISTER          0x10
 
-/* Software definitions */
-#define EC_CMD_TIMEOUT      0x30000 /* Maximum wait loop */
+#define EC_CMD_TIMEOUT      	 0x30000 /* Maximum wait loop */
 
 /* Firmware version data struct and definitions */
-#define FIRMWARE_TIME_STAMP_SIZE (EC_MBX_SIZE - sizeof(uint32_t))
+#define FIRMWARE_TIME_STAMP_SIZE (EC_MBX_SIZE - sizeof(u32))
 
 struct version_t {
 	u8 minor;
