@@ -37,6 +37,11 @@ struct seco_meccec_data {
 	int irq;
 };
 
+struct seco_meccec_adap_data {
+	struct seco_meccec_data *cec;
+	int idx;
+};
+
 static int ec_reg_byte_op(u8 reg, u8 operation, u8 data, u8 *result)
 {
 	int res;
@@ -213,21 +218,6 @@ err:
 	return status;
 }
 
-static int find_adap_idx(struct cec_adapter *adap)
-{
-	struct seco_meccec_data *cec = cec_get_drvdata(adap);
-	int idx;
-
-	if (!adap)
-		return -EINVAL;
-
-	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
-		if (cec->cec_adap[idx] == adap)
-			return idx;
-	}
-	return -ENODEV;
-}
-
 static int ec_get_version(struct seco_meccec_data *cec)
 {
 	const struct device *dev = cec->dev;
@@ -288,13 +278,14 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 
 static int meccec_adap_phys_addr(struct cec_adapter *adap, u16 phys_addr)
 {
-	struct seco_meccec_data *cec = cec_get_drvdata(adap);
+	struct seco_meccec_adap_data *adap_data = cec_get_drvdata(adap);
+	struct seco_meccec_data *cec = adap_data->cec;
 	const struct platform_device *pdev = cec->pdev;
 	const struct device *dev = cec->dev;
 	struct seco_meccec_phyaddr_t buf = { };
 	int status;
 
-	buf.bus = find_adap_idx(adap);
+	buf.bus = adap_data->idx;
 	buf.addr = phys_addr;
 
 	/* Need to tell physical address to wake up while standby */
@@ -308,13 +299,14 @@ static int meccec_adap_phys_addr(struct cec_adapter *adap, u16 phys_addr)
 
 static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 {
-	struct seco_meccec_data *cec = cec_get_drvdata(adap);
+	struct seco_meccec_adap_data *adap_data = cec_get_drvdata(adap);
+	struct seco_meccec_data *cec = adap_data->cec;
 	struct platform_device *pdev = cec->pdev;
 	const struct device *dev = cec->dev;
 	struct seco_meccec_logaddr_t buf = { };
 	int status;
 
-	buf.bus = find_adap_idx(adap);
+	buf.bus = adap_data->idx;
 	buf.addr = logical_addr & 0x0f;
 
 	status = ec_send_command(pdev, SET_CEC_LOGADDR_CMD,
@@ -332,7 +324,8 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 
 static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 {
-	struct seco_meccec_data *cec = cec_get_drvdata(adap);
+	struct seco_meccec_adap_data *adap_data = cec_get_drvdata(adap);
+	struct seco_meccec_data *cec = adap_data->cec;
 	const struct device *dev = cec->dev;
 	int ret;
 
@@ -359,19 +352,16 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 				u32 signal_free_time, struct cec_msg *msg)
 {
-	struct seco_meccec_data *cec = cec_get_drvdata(adap);
+	struct seco_meccec_adap_data *adap_data = cec_get_drvdata(adap);
+	struct seco_meccec_data *cec = adap_data->cec;
 	struct platform_device *pdev = cec->pdev;
 	const struct device *dev = cec->dev;
 	struct seco_meccec_msg_t buf = { };
-	int status, idx;
+	int status;
 
 	dev_dbg(dev, "Device transmitting\n");
 
-	idx = find_adap_idx(adap);
-	if (idx < 0)
-		return idx;
-
-	buf.bus = idx;
+	buf.bus = adap_data->idx;
 	buf.send = (msg->msg[0] & 0xf0) >> 4;
 	buf.dest = msg->msg[0] & 0x0f;
 	buf.size = msg->len - 1;
@@ -591,6 +581,42 @@ static const struct cec_adap_ops meccec_cec_adap_ops = {
 	.adap_transmit = meccec_adap_transmit,
 };
 
+static int meccec_create_adapter(struct seco_meccec_data *cec, int idx)
+{
+	struct seco_meccec_adap_data *adap_data;
+	struct device *dev = cec->dev;
+	struct cec_adapter *acec;
+	char adap_name[32];
+
+	if (!cec)
+		return -EINVAL;
+
+	adap_data = devm_kzalloc(dev, sizeof(*adap_data), GFP_KERNEL);
+	if (!adap_data)
+		return -ENOMEM;
+
+	adap_data->cec = cec;
+	adap_data->idx = idx;
+
+	sprintf(adap_name, "%s-%d", dev_name(dev), idx);
+
+	/* Allocate CEC adapter */
+	acec = cec_allocate_adapter(&meccec_cec_adap_ops,
+				    adap_data,
+				    adap_name,
+				    CEC_CAP_DEFAULTS |
+				    CEC_CAP_CONNECTOR_INFO,
+				    MECCEC_MAX_ADDRS);
+
+	if (IS_ERR(acec))
+		return PTR_ERR(acec);
+
+	/* Assign to data */
+	cec->cec_adap[idx] = acec;
+
+	return 0;
+}
+
 static int seco_meccec_probe(struct platform_device *pdev)
 {
 	struct seco_meccec_data *meccec;
@@ -649,49 +675,12 @@ static int seco_meccec_probe(struct platform_device *pdev)
 
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (meccec->channels & BIT_MASK(idx)) {
-			struct cec_adapter *acec;
-
-			/* Allocate CEC adapter */
-			acec = cec_allocate_adapter(&meccec_cec_adap_ops,
-						    meccec,
-						    dev_name(dev),
-						    CEC_CAP_DEFAULTS |
-						    CEC_CAP_CONNECTOR_INFO,
-						    MECCEC_MAX_ADDRS);
-
-			if (IS_ERR(acec)) {
-				ret = PTR_ERR(acec);
+			ret = meccec_create_adapter(meccec, idx);
+			if (ret)
 				goto err_delete_adapter;
-			}
-			dev_dbg(dev, "CEC adapter #%d allocated\n", idx);
 
-			meccec->cec_adap[idx] = acec;
-			adaps++;
-		}
-	}
-
-	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
-		if (meccec->channels & BIT_MASK(idx)) {
-			struct cec_adapter *acec = meccec->cec_adap[idx];
-			struct cec_notifier *ncec;
-
-			if (!acec) {
-				ret = -EINVAL;
-				goto err_notifier;
-			}
-
-			ncec = cec_notifier_cec_adap_register(hdmi_dev,
-							      conn[idx], acec);
-
-			dev_dbg(dev, "CEC notifier #%d allocated %s\n", idx, conn[idx]);
-
-			if (IS_ERR(ncec)) {
-				ret = PTR_ERR(ncec);
-				goto err_notifier;
-			}
-
-			meccec->notifier[idx] = ncec;
 			notifs++;
+			dev_dbg(dev, "CEC adapter #%d allocated\n", idx);
 		}
 	}
 
