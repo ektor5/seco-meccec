@@ -317,7 +317,7 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	/* When setting LA, adap has valid physical address */
 	status = meccec_adap_phys_addr(adap, adap->phys_addr);
 	if (status)
-		dev_err(dev, "Set physical address failed (%d)\n", status);
+		dev_err(dev, "Set physical address failed %d\n", status);
 
 	return status;
 }
@@ -332,7 +332,7 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "enable: status operation failed (%d)\n", ret);
+		dev_err(dev, "enable: status operation failed %d\n", ret);
 
 	if (enable) {
 		dev_dbg(dev, "Device enabled\n");
@@ -341,7 +341,7 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 
 		ret = meccec_adap_phys_addr(adap, CEC_PHYS_ADDR_INVALID);
 		if (ret) {
-			dev_err(dev, "enable: set physical address failed (%d)\n", ret);
+			dev_err(dev, "enable: set physical address failed %d\n", ret);
 			return ret;
 		}
 	}
@@ -397,10 +397,8 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	struct cec_msg msg = { };
 	int status;
 
-	if (status_val & SECOCEC_STATUS_RX_OVERFLOW_MASK) {
-		/* NOTE: Untested, it also might not be necessary */
+	if (status_val & SECOCEC_STATUS_RX_OVERFLOW_MASK)
 		dev_warn(dev, "Received more than 16 bytes. Discarding\n");
-	}
 
 	if (status_val & SECOCEC_STATUS_RX_ERROR_MASK) {
 		dev_warn(dev, "Message received with errors. Discarding\n");
@@ -457,7 +455,7 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 
 	ret = ec_cec_status(cec, &status);
 	if (ret) {
-		dev_warn(dev, "IRQ: status cmd failed (%d)\n", ret);
+		dev_warn(dev, "IRQ: status cmd failed %d\n", ret);
 		goto err;
 	}
 
@@ -486,7 +484,7 @@ err:
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "IRQ: status cmd failed twice (%d)\n", ret);
+		dev_err(dev, "IRQ: status cmd failed twice %d\n", ret);
 
 	return IRQ_HANDLED;
 }
@@ -762,7 +760,7 @@ static int seco_meccec_resume(struct device *dev)
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "resume: status operation failed (%d)\n", ret);
+		dev_err(dev, "resume: status operation failed %d\n", ret);
 
 	return ret;
 }
