@@ -127,7 +127,7 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 	/* Wait for BIOS agent idle */
 	status = ec_waitstatus(AGENT_IDLE(AGENT_USER), 0);
 	if (status) {
-		dev_err(dev, "Mailbox agent not available");
+		dev_err(dev, "Mailbox agent not available\n");
 		goto err;
 	}
 
@@ -135,7 +135,7 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 	status = ec_waitstatus(AGENT_ACTIVE(AGENT_USER),
 			       REQUEST_MBX_ACCESS(AGENT_USER));
 	if (status) {
-		dev_err(dev, "Request mailbox agent failed");
+		dev_err(dev, "Request mailbox agent failed\n");
 		goto err;
 	}
 
@@ -144,28 +144,28 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		status = ec_reg_byte_wr(EC_MBX_REGISTER + idx, buf[idx]);
 
 	if (status) {
-		dev_err(dev, "Mailbox buffer write failed");
+		dev_err(dev, "Mailbox buffer write failed\n");
 		goto err;
 	}
 
 	/* Send command */
 	status = ec_reg_byte_wr(EC_COMMAND_REGISTER, cmd);
 	if (status) {
-		dev_err(dev, "Command write failed");
+		dev_err(dev, "Command write failed\n");
 		goto err;
 	}
 
 	/* Wait for completion */
 	status = ec_waitstatus(AGENT_DONE(AGENT_USER), 0);
 	if (status) {
-		dev_err(dev, "Mailbox did not complete after command write");
+		dev_err(dev, "Mailbox did not complete after command write\n");
 		goto err;
 	}
 
 	/* Get result code */
 	status = ec_reg_byte_rd(EC_RESULT_REGISTER, &res);
 	if (status) {
-		dev_err(dev, "Result read failed");
+		dev_err(dev, "Result read failed\n");
 		goto err;
 	}
 
@@ -192,7 +192,7 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		break;
 	}
 	if (status) {
-		dev_err(dev, "Command failed");
+		dev_err(dev, "Command failed\n");
 		goto err;
 	}
 
@@ -201,7 +201,7 @@ static int ec_send_command(const struct platform_device *pdev, u8 cmd,
 		status = ec_reg_byte_rd(EC_MBX_REGISTER + idx, &buf[idx]);
 
 	if (status) {
-		dev_err(dev, "Mailbox read failed");
+		dev_err(dev, "Mailbox read failed\n");
 		goto err;
 	}
 
@@ -242,7 +242,7 @@ static int ec_get_version(struct seco_meccec_data *cec)
 	if (status)
 		return status;
 
-	dev_dbg(dev, "Firmware version %X.%02X / %X.%02X",
+	dev_dbg(dev, "Firmware version %X.%02X / %X.%02X\n",
 		version.fw.major,
 		version.fw.minor,
 		version.lib.major,
@@ -265,7 +265,7 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 				      &buf, sizeof(struct seco_meccec_status_t),
 				      &buf, sizeof(struct seco_meccec_status_t));
 		if (ret) {
-			dev_dbg(dev, "Status: Mailbox is busy. Retrying.");
+			dev_dbg(dev, "Status: Mailbox is busy. Retrying.\n");
 			continue;
 		}
 		break;
@@ -274,11 +274,11 @@ static int ec_cec_status(struct seco_meccec_data *cec,
 	if (ret)
 		return ret;
 
-	dev_dbg(dev, "CEC Status:");
-	dev_dbg(dev, "ch0: 0x%02x", buf.status_ch0);
-	dev_dbg(dev, "ch1: 0x%02x", buf.status_ch1);
-	dev_dbg(dev, "ch2: 0x%02x", buf.status_ch2);
-	dev_dbg(dev, "ch3: 0x%02x", buf.status_ch3);
+	dev_dbg(dev, "CEC Status:\n");
+	dev_dbg(dev, "ch0: 0x%02x\n", buf.status_ch0);
+	dev_dbg(dev, "ch1: 0x%02x\n", buf.status_ch1);
+	dev_dbg(dev, "ch2: 0x%02x\n", buf.status_ch2);
+	dev_dbg(dev, "ch3: 0x%02x\n", buf.status_ch3);
 
 	if (result)
 		*result = buf;
@@ -301,7 +301,7 @@ static int meccec_adap_phys_addr(struct cec_adapter *adap, u16 phys_addr)
 	status = ec_send_command(pdev, SET_CEC_PHYADDR_CMD,
 				 &buf, sizeof(struct seco_meccec_phyaddr_t),
 				 NULL, 0);
-	dev_dbg(dev, "Physical address 0x%04x", phys_addr);
+	dev_dbg(dev, "Physical address 0x%04x\n", phys_addr);
 
 	return status;
 }
@@ -320,12 +320,12 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	status = ec_send_command(pdev, SET_CEC_LOGADDR_CMD,
 				 &buf, sizeof(struct seco_meccec_logaddr_t),
 				 NULL, 0);
-	dev_dbg(dev, "Logical address 0x%02x", logical_addr);
+	dev_dbg(dev, "Logical address 0x%02x\n", logical_addr);
 
 	/* When setting LA, adap has valid physical address */
 	status = meccec_adap_phys_addr(adap, adap->phys_addr);
 	if (status)
-		dev_err(dev, "Set physical address failed (%d)", status);
+		dev_err(dev, "Set physical address failed (%d)\n", status);
 
 	return status;
 }
@@ -339,16 +339,16 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "enable: status operation failed (%d)", ret);
+		dev_err(dev, "enable: status operation failed (%d)\n", ret);
 
 	if (enable) {
-		dev_dbg(dev, "Device enabled");
+		dev_dbg(dev, "Device enabled\n");
 	} else {
-		dev_dbg(dev, "Device disabled");
+		dev_dbg(dev, "Device disabled\n");
 
 		ret = meccec_adap_phys_addr(adap, CEC_PHYS_ADDR_INVALID);
 		if (ret) {
-			dev_err(dev, "enable: set physical address failed (%d)", ret);
+			dev_err(dev, "enable: set physical address failed (%d)\n", ret);
 			return ret;
 		}
 	}
@@ -365,7 +365,7 @@ static int meccec_adap_transmit(struct cec_adapter *adap, u8 attempts,
 	struct seco_meccec_msg_t buf = { };
 	int status, idx;
 
-	dev_dbg(dev, "Device transmitting");
+	dev_dbg(dev, "Device transmitting\n");
 
 	idx = find_adap_idx(adap);
 	if (idx < 0)
@@ -409,11 +409,11 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 
 	if (status_val & SECOCEC_STATUS_RX_OVERFLOW_MASK) {
 		/* NOTE: Untested, it also might not be necessary */
-		dev_warn(dev, "Received more than 16 bytes. Discarding");
+		dev_warn(dev, "Received more than 16 bytes. Discarding\n");
 	}
 
 	if (status_val & SECOCEC_STATUS_RX_ERROR_MASK) {
-		dev_warn(dev, "Message received with errors. Discarding");
+		dev_warn(dev, "Message received with errors. Discarding\n");
 		status = -EIO;
 		goto rxerr;
 	}
@@ -434,7 +434,7 @@ static void meccec_rx_done(struct seco_meccec_data *cec, int adap_idx, u8 status
 	memcpy(msg.msg + 1, buf.data, buf.size);
 
 	cec_received_msg(adap, &msg);
-	dev_dbg(dev, "Message received successfully");
+	dev_dbg(dev, "Message received successfully\n");
 
 rxerr:
 	return;
@@ -463,11 +463,11 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 	bool interrupt_served = false;
 	int ret, idx;
 
-	dev_dbg(dev, "Interrupt Called!");
+	dev_dbg(dev, "Interrupt Called!\n");
 
 	ret = ec_cec_status(cec, &status);
 	if (ret) {
-		dev_warn(dev, "IRQ: status cmd failed (%d)", ret);
+		dev_warn(dev, "IRQ: status cmd failed (%d)\n", ret);
 		goto err;
 	}
 
@@ -489,14 +489,14 @@ static irqreturn_t seco_meccec_irq_handler(int irq, void *priv)
 		}
 	}
 	if (!interrupt_served)
-		dev_warn(dev, "Message not received or sent, but interrupt fired");
+		dev_warn(dev, "Message not received or sent, but interrupt fired\n");
 
 	return IRQ_HANDLED;
 err:
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "IRQ: status cmd failed twice (%d)", ret);
+		dev_err(dev, "IRQ: status cmd failed twice (%d)\n", ret);
 
 	return IRQ_HANDLED;
 }
@@ -560,25 +560,25 @@ static int seco_meccec_acpi_probe(struct seco_meccec_data *sdev)
 
 	gpio = devm_gpiod_get(dev, "notify", GPIOF_IN);
 	if (IS_ERR(gpio)) {
-		dev_err(dev, "Cannot request interrupt gpio");
+		dev_err(dev, "Cannot request interrupt gpio\n");
 		return PTR_ERR(gpio);
 	}
 
 	irq = gpiod_to_irq(gpio);
 	if (irq < 0) {
-		dev_err(dev, "Cannot find valid irq");
+		dev_err(dev, "Cannot find valid irq\n");
 		return -ENODEV;
 	}
-	dev_dbg(dev, "irq-gpio is bound to IRQ %d", irq);
+	dev_dbg(dev, "irq-gpio is bound to IRQ %d\n", irq);
 	sdev->irq = irq;
 
 	/* Get info from ACPI about channels capabilities */
 	ret = acpi_dev_get_property(adev, "av-channels",  ACPI_TYPE_INTEGER, &obj);
 	if (ret < 0) {
-		dev_err(dev, "Cannot retrieve channel properties");
+		dev_err(dev, "Cannot retrieve channel properties\n");
 		return ret;
 	}
-	dev_dbg(dev, "ACPI property: av-channels -> %x", (int)obj->integer.value);
+	dev_dbg(dev, "ACPI property: av-channels -> %x\n", (int)obj->integer.value);
 	sdev->channels = (int)obj->integer.value;
 
 	return 0;
@@ -611,19 +611,19 @@ static int seco_meccec_probe(struct platform_device *pdev)
 
 	ret = ec_get_version(meccec);
 	if (ret) {
-		dev_err(dev, "Get version failed");
+		dev_err(dev, "Get version failed\n");
 		goto err;
 	}
 
 	if (!has_acpi_companion(dev)) {
-		dev_err(dev, "Cannot find any ACPI companion");
+		dev_err(dev, "Cannot find any ACPI companion\n");
 		ret = -ENODEV;
 		goto err;
 	}
 
 	ret = seco_meccec_acpi_probe(meccec);
 	if (ret) {
-		dev_err(dev, "ACPI probe failed");
+		dev_err(dev, "ACPI probe failed\n");
 		goto err;
 	}
 
@@ -635,17 +635,17 @@ static int seco_meccec_probe(struct platform_device *pdev)
 					dev_name(&pdev->dev), meccec);
 
 	if (ret) {
-		dev_err(dev, "Cannot request IRQ %d", meccec->irq);
+		dev_err(dev, "Cannot request IRQ %d\n", meccec->irq);
 		ret = -EIO;
 		goto err;
 	}
 
 	hdmi_dev = seco_meccec_find_hdmi_dev(&pdev->dev, &conn);
 	if (IS_ERR(hdmi_dev)) {
-		dev_err(dev, "Cannot find HDMI Device");
+		dev_err(dev, "Cannot find HDMI Device\n");
 		return PTR_ERR(hdmi_dev);
 	}
-	dev_dbg(dev, "HDMI device found");
+	dev_dbg(dev, "HDMI device found\n");
 
 	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
 		if (meccec->channels & BIT_MASK(idx)) {
@@ -663,7 +663,7 @@ static int seco_meccec_probe(struct platform_device *pdev)
 				ret = PTR_ERR(acec);
 				goto err_delete_adapter;
 			}
-			dev_dbg(dev, "CEC adapter #%d allocated", idx);
+			dev_dbg(dev, "CEC adapter #%d allocated\n", idx);
 
 			meccec->cec_adap[idx] = acec;
 			adaps++;
@@ -683,7 +683,7 @@ static int seco_meccec_probe(struct platform_device *pdev)
 			ncec = cec_notifier_cec_adap_register(hdmi_dev,
 							      conn[idx], acec);
 
-			dev_dbg(dev, "CEC notifier #%d allocated %s", idx, conn[idx]);
+			dev_dbg(dev, "CEC notifier #%d allocated %s\n", idx, conn[idx]);
 
 			if (IS_ERR(ncec)) {
 				ret = PTR_ERR(ncec);
@@ -701,12 +701,12 @@ static int seco_meccec_probe(struct platform_device *pdev)
 			if (ret)
 				goto err_notifier;
 
-			dev_dbg(dev, "CEC adapter #%d registered", idx);
+			dev_dbg(dev, "CEC adapter #%d registered\n", idx);
 		}
 	}
 
 	platform_set_drvdata(pdev, meccec);
-	dev_dbg(dev, "Device registered");
+	dev_dbg(dev, "Device registered\n");
 
 	return ret;
 
@@ -734,7 +734,7 @@ err_delete_adapter:
 		}
 	}
 err:
-	dev_err(dev, "%s device probe failed: %d", dev_name(dev), ret);
+	dev_err(dev, "%s device probe failed: %d\n", dev_name(dev), ret);
 
 	return ret;
 }
@@ -757,7 +757,7 @@ static int seco_meccec_remove(struct platform_device *pdev)
 		}
 	}
 
-	dev_dbg(&pdev->dev, "CEC device removed");
+	dev_dbg(&pdev->dev, "CEC device removed\n");
 
 	return 0;
 }
@@ -768,12 +768,12 @@ static int seco_meccec_resume(struct device *dev)
 	struct seco_meccec_data *cec = dev_get_drvdata(dev);
 	int ret;
 
-	dev_dbg(dev, "Device resumed from suspend");
+	dev_dbg(dev, "Device resumed from suspend\n");
 
 	/* reset status register */
 	ret = ec_cec_status(cec, NULL);
 	if (ret)
-		dev_err(dev, "resume: status operation failed (%d)", ret);
+		dev_err(dev, "resume: status operation failed (%d)\n", ret);
 
 	return ret;
 }
