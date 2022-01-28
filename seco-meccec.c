@@ -676,9 +676,32 @@ static int seco_meccec_probe(struct platform_device *pdev)
 			ret = meccec_create_adapter(meccec, idx);
 			if (ret)
 				goto err_delete_adapter;
-
-			notifs++;
 			dev_dbg(dev, "CEC adapter #%d allocated\n", idx);
+		}
+	}
+
+	for (idx = 0; idx < MECCEC_MAX_CEC_ADAP; idx++) {
+		if (meccec->channels & BIT_MASK(idx)) {
+			struct cec_adapter *acec = meccec->cec_adap[idx];
+			struct cec_notifier *ncec;
+
+			if (!acec) {
+				ret = -EINVAL;
+				goto err_notifier;
+			}
+
+			ncec = cec_notifier_cec_adap_register(hdmi_dev,
+							      conn[idx], acec);
+
+			dev_dbg(dev, "CEC notifier #%d allocated %s\n", idx, conn[idx]);
+
+			if (IS_ERR(ncec)) {
+				ret = PTR_ERR(ncec);
+				goto err_notifier;
+			}
+
+			meccec->notifier[idx] = ncec;
+			notifs++;
 		}
 	}
 
