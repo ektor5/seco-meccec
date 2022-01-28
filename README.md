@@ -10,7 +10,7 @@ Compatible with:
 
 ## Requirements
 
-* Linux Kernel >= 5.5 with `CEC_NOTIFIER` support
+* Linux Kernel >= 5.4 with `CEC_NOTIFIER` support
 
 In order to use the driver, there are several methods:
 * Use DKMS (Dynamic Kernel Module System)
