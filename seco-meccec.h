@@ -117,11 +117,11 @@ enum CMD_RESULT {
 /* MBX commands */
 enum MBX_CMDS {
 	GET_FIRMWARE_VERSION_CMD = 0,    /* Get firmware version record		*/
-	CEC_WRITE_CMD		 = 0x72, /* Write CEC command			*/
-	CEC_READ_CMD		 = 0x73, /* Read CEC command			*/
-	GET_CEC_STATUS_CMD	 = 0x74, /* Get CEC status regisers		*/
-	SET_CEC_LOGADDR_CMD	 = 0x75, /* Set CEC Logical Address		*/
-	SET_CEC_PHYADDR_CMD	 = 0x76, /* Set CEC Physical Address		*/
+	CEC_WRITE_CMD		 = 0x80, /* Write CEC command			*/
+	CEC_READ_CMD		 = 0x81, /* Read CEC command			*/
+	GET_CEC_STATUS_CMD	 = 0x82, /* Get CEC status regisers		*/
+	SET_CEC_LOGADDR_CMD	 = 0x83, /* Set CEC Logical Address		*/
+	SET_CEC_PHYADDR_CMD	 = 0x84, /* Set CEC Physical Address		*/
 	REQUEST_MBX_ACCESS_CMD   = 0xf0, /* First request access command	*/
 	RELEASE_MBX_ACCESS_CMD   = 0xf8, /* First release access command	*/
 };
