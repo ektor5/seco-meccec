@@ -319,7 +319,8 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 	 * the CPU is sleeping. If PA match with a SET_STREAM_PATH message, it
 	 * will resume the CPU.
 	 *
-	 * When setting LA, adap has valid physical address */
+	 * When setting LA, adap has valid physical address
+	 */
 	status = meccec_adap_phys_addr(adap, adap->phys_addr);
 	if (status)
 		dev_err(dev, "Set physical address failed %d\n", status);
@@ -344,6 +345,9 @@ static int meccec_adap_enable(struct cec_adapter *adap, bool enable)
 	} else {
 		dev_dbg(dev, "Device disabled\n");
 
+		/* When the adapter is disabled, setting the physical address to
+		 * invalid prevents the MEC firmware to wake up the CPU.
+		 */
 		ret = meccec_adap_phys_addr(adap, CEC_PHYS_ADDR_INVALID);
 		if (ret) {
 			dev_err(dev, "enable: set physical address failed %d\n", ret);
