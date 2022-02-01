@@ -314,7 +314,12 @@ static int meccec_adap_log_addr(struct cec_adapter *adap, u8 logical_addr)
 				 NULL, 0);
 	dev_dbg(dev, "Logical address 0x%02x\n", logical_addr);
 
-	/* When setting LA, adap has valid physical address */
+	/* Physical address is sent to MEC to be stored for replying
+	 * autonomously to GIVE_PHYSICAL_ADDR and matching SET_STREAM_PATH when
+	 * the CPU is sleeping. If PA match with a SET_STREAM_PATH message, it
+	 * will resume the CPU.
+	 *
+	 * When setting LA, adap has valid physical address */
 	status = meccec_adap_phys_addr(adap, adap->phys_addr);
 	if (status)
 		dev_err(dev, "Set physical address failed %d\n", status);
@@ -498,9 +503,9 @@ struct cec_dmi_match {
 
 static const struct cec_dmi_match secocec_dmi_match_table[] = {
 	/* UDOO BOLT */
-	{ "Seco", "UDOO BOLT", "0000:05:00.0", {"Port B", "Port C"} },
+	{ "Seco", "0C60", "0000:05:00.0", {"Port B", "Port C"} },
 	/* UDOO Vision */
-	{ "Seco", "UDOO Vision", "0000:00:02.0", {"Port B"} },
+	{ "Seco", "0D02", "0000:00:02.0", {"Port B"} },
 	/* SECO SBC-D61 */
 	{ "Seco", "0D61", "0000:00:02.0", {"Port B", "Port C"} },
 };
