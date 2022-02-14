@@ -631,7 +631,8 @@ static int seco_meccec_probe(struct platform_device *pdev)
 	struct device *hdmi_dev;
 	const char * const *conn;
 	int ret, idx;
-	int adaps, notifs = 0;
+	int adaps = 0;
+	int notifs = 0;
 
 	meccec = devm_kzalloc(dev, sizeof(*meccec), GFP_KERNEL);
 	if (!meccec)
@@ -685,7 +686,9 @@ static int seco_meccec_probe(struct platform_device *pdev)
 			ret = meccec_create_adapter(meccec, idx);
 			if (ret)
 				goto err_delete_adapter;
+
 			dev_dbg(dev, "CEC adapter #%d allocated\n", idx);
+			adaps++;
 		}
 	}
 
