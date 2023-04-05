@@ -33,6 +33,7 @@ struct seco_meccec_data {
 	struct cec_adapter *cec_adap[MECCEC_MAX_CEC_ADAP];
 	struct cec_notifier *notifier[MECCEC_MAX_CEC_ADAP];
 	u8 channels;	/* bitmask */
+	int is_active_low;
 	int irq;
 };
 
@@ -561,6 +562,7 @@ static int seco_meccec_acpi_probe(struct seco_meccec_data *sdev)
 		dev_err(dev, "Cannot request interrupt gpio\n");
 		return PTR_ERR(gpio);
 	}
+	sdev->is_active_low = gpiod_is_active_low(gpio);
 
 	irq = gpiod_to_irq(gpio);
 	if (irq < 0) {
@@ -631,6 +633,7 @@ static int seco_meccec_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device *hdmi_dev;
 	const char * const *conn;
+	unsigned long irq_flags;
 	int ret, idx;
 	int adaps = 0;
 	int notifs = 0;
@@ -662,11 +665,16 @@ static int seco_meccec_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	if ( meccec->is_active_low )
+		irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
+	else
+		irq_flags = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
+
 	ret = devm_request_threaded_irq(dev,
 					meccec->irq,
 					NULL,
 					seco_meccec_irq_handler,
-					IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+					irq_flags,
 					dev_name(&pdev->dev), meccec);
 
 	if (ret) {
