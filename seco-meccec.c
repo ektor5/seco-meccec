@@ -10,7 +10,6 @@
 #include <linux/acpi.h>
 #include <linux/dmi.h>
 #include <linux/gpio/consumer.h>
-#include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
@@ -557,7 +556,7 @@ static int seco_meccec_acpi_probe(struct seco_meccec_data *sdev)
 	int irq = 0;
 	int ret;
 
-	gpio = devm_gpiod_get(dev, "notify", GPIOF_IN);
+	gpio = devm_gpiod_get(dev, "notify", GPIOD_IN);
 	if (IS_ERR(gpio)) {
 		dev_err(dev, "Cannot request interrupt gpio\n");
 		return PTR_ERR(gpio);
