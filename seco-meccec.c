@@ -514,6 +514,8 @@ static const struct cec_dmi_match secocec_dmi_match_table[] = {
 	{ "Seco", "0D61", "0000:00:02.0", {"Port B", "Port C"} },
 	/* Airtame Hub */
 	{ "Airtame", "Hub", "0000:00:02.0", {"Port B", "Port C"} },
+	/* SECO SBC-D89 */
+	{ "Seco", "0D89", "0000:00:02.0", {"Port G", "Port F"} },
 };
 
 static struct device *seco_meccec_find_hdmi_dev(struct device *dev,
