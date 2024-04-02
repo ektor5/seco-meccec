@@ -667,7 +667,7 @@ static int seco_meccec_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	if ( meccec->is_active_low )
+	if (meccec->is_active_low)
 		irq_flags = IRQF_TRIGGER_FALLING | IRQF_ONESHOT;
 	else
 		irq_flags = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
