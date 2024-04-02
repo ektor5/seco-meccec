@@ -507,7 +507,7 @@ struct cec_dmi_match {
 
 static const struct cec_dmi_match secocec_dmi_match_table[] = {
 	/* UDOO BOLT */
-	{ "Seco", "0C60", "0000:05:00.0", {"Port B", "Port C"} },
+	{ "Seco", "C40", "0000:08:00.0", {"HDMI-A-1", "HDMI-A-2"} },
 	/* UDOO Vision */
 	{ "Seco", "0D02", "0000:00:02.0", {"Port B"} },
 	/* SECO SBC-D61 */
