@@ -1,0 +1,112 @@
+From 8565c00cedfbded5a860643ba2c50c39df157e6f Mon Sep 17 00:00:00 2001
+From: Ettore Chimenti <ettore.chimenti@seco.com>
+Date: Thu, 28 Mar 2024 16:52:39 +0100
+Subject: [PATCH 2/2] drm: amdgpu-dm: add CEC notifier support
+
+Adding CEC notifier support to AMDGPU-DM for HDMI devices with a CEC
+controller on-board (e.g.: UDOO BOLT).
+
+Using drm_connector name as identifier for cec-notifier registration.
+
+Signed-off-by: Ettore Chimenti <ettore.chimenti@seco.com>
+---
+ .../gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c | 25 +++++++++++++++++++
+ .../gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h |  4 +++
+ 2 files changed, 29 insertions(+)
+
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+index d292f290cd6e..0ab84f9df011 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.c
+@@ -6297,6 +6297,9 @@ amdgpu_dm_connector_detect(struct drm_connector *connector, bool force)
+ 
+ 	update_subconnector_property(aconnector);
+ 
++	if (!connected)
++		cec_notifier_phys_addr_invalidate(aconnector->cec_notifier);
++
+ 	return (connected ? connector_status_connected :
+ 			connector_status_disconnected);
+ }
+@@ -6406,6 +6409,8 @@ static void amdgpu_dm_connector_unregister(struct drm_connector *connector)
+ {
+ 	struct amdgpu_dm_connector *amdgpu_dm_connector = to_amdgpu_dm_connector(connector);
+ 
++	cec_notifier_conn_unregister(amdgpu_dm_connector->cec_notifier);
++
+ 	drm_dp_aux_unregister(&amdgpu_dm_connector->dm_dp_aux.aux);
+ }
+ 
+@@ -7289,6 +7294,7 @@ static void amdgpu_dm_connector_ddc_get_modes(struct drm_connector *connector,
+ {
+ 	struct amdgpu_dm_connector *amdgpu_dm_connector =
+ 			to_amdgpu_dm_connector(connector);
++	struct drm_display_info *di = &connector->display_info;
+ 
+ 	if (edid) {
+ 		/* empty probed_modes */
+@@ -7312,6 +7318,9 @@ static void amdgpu_dm_connector_ddc_get_modes(struct drm_connector *connector,
+ 		 * restored here.
+ 		 */
+ 		amdgpu_dm_update_freesync_caps(connector, edid);
++
++		cec_notifier_set_phys_addr(amdgpu_dm_connector->cec_notifier,
++					   di->source_physical_address);
+ 	} else {
+ 		amdgpu_dm_connector->num_modes = 0;
+ 	}
+@@ -7645,6 +7654,7 @@ static int amdgpu_dm_connector_init(struct amdgpu_display_manager *dm,
+ 	int connector_type;
+ 	struct dc *dc = dm->dc;
+ 	struct dc_link *link = dc_get_link_at_index(dc, link_index);
++	struct cec_connector_info conn_info;
+ 	struct amdgpu_i2c_adapter *i2c;
+ 
+ 	/* Not needed for writeback connector */
+@@ -7698,6 +7708,21 @@ static int amdgpu_dm_connector_init(struct amdgpu_display_manager *dm,
+ 		|| connector_type == DRM_MODE_CONNECTOR_eDP)
+ 		amdgpu_dm_initialize_dp_connector(dm, aconnector, link->link_index);
+ 
++	if (connector_type == DRM_MODE_CONNECTOR_HDMIA) {
++		DRM_DEBUG_DRIVER("%s Initializing CEC for %s", __func__,
++				 aconnector->base.name);
++
++		cec_fill_conn_info_from_drm(&conn_info, &aconnector->base);
++
++		aconnector->cec_notifier =
++			cec_notifier_conn_register(&dm->adev->pdev->dev,
++						   aconnector->base.name,
++						   &conn_info);
++		if (!aconnector->cec_notifier)
++			DRM_WARN("%s: CEC notifier register failed\n",
++				 aconnector->base.name);
++	}
++
+ out_free:
+ 	if (res) {
+ 		kfree(i2c);
+diff --git a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h
+index 9c1871b866cc..8fc80a9c6c52 100644
+--- a/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h
++++ b/drivers/gpu/drm/amd/display/amdgpu_dm/amdgpu_dm.h
+@@ -33,6 +33,7 @@
+ #include <drm/drm_plane.h>
+ #include "link_service_types.h"
+ #include <drm/drm_writeback.h>
++#include <media/cec-notifier.h>
+ 
+ /*
+  * This file contains the definition for amdgpu_display_manager
+@@ -666,6 +667,9 @@ struct amdgpu_dm_connector {
+ 	/* TODO see if we can merge with ddc_bus or make a dm_connector */
+ 	struct amdgpu_i2c_adapter *i2c;
+ 
++	/* CEC notifier */
++	struct cec_notifier *cec_notifier;
++
+ 	/* Monitor range limits */
+ 	/**
+ 	 * @min_vfreq: Minimal frequency supported by the display in Hz. This
+-- 
+2.25.1
+
